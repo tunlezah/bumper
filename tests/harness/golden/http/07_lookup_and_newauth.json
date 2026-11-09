@@ -1,0 +1,256 @@
+{
+  "description": "Bot-facing lookup.do (plain HTTP) and newauth.do, including malformed bodies.",
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoMsgNew",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "ip": "127.0.0.1",
+          "port": 5223,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup EcoMsgNew json"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoUpdate",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "ip": "47.88.66.164",
+          "port": 8005,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup EcoUpdate json"
+    },
+    {
+      "request": {
+        "body": {
+          "form": {
+            "service": "EcoMsgNew",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "ip": "127.0.0.1",
+          "port": 5223,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup EcoMsgNew form"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "Other",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {},
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup unknown service"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "todo": "Nothing"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {},
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup unknown todo"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoMsgNew"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "lookup missing todo"
+    },
+    {
+      "request": {
+        "body": {
+          "content_type": "application/json",
+          "raw": "{bad json"
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "lookup malformed json"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/lookup.do",
+        "port": "http"
+      },
+      "response": {
+        "body_text": "405: Method Not Allowed",
+        "content_type": "text/plain; charset=utf-8",
+        "status": 405
+      },
+      "step": "lookup with GET is not allowed"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoMsgNew",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/lookup.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "ip": "127.0.0.1",
+          "port": 5223,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lookup over TLS"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "itToken": "us_0123456789abcdef0123456789abcdef",
+            "todo": "OLoginByITToken"
+          }
+        },
+        "method": "POST",
+        "path": "/newauth.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "authCode": "us_<hex32>",
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "newauth json"
+    },
+    {
+      "request": {
+        "body": {
+          "form": {
+            "itToken": "some-token",
+            "todo": "OLoginByITToken"
+          }
+        },
+        "method": "POST",
+        "path": "/newauth.do",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "authCode": "some-token",
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "newauth form"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "todo": "OLoginByITToken"
+          }
+        },
+        "method": "POST",
+        "path": "/newauth.do",
+        "port": "http"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "newauth missing itToken"
+    },
+    {
+      "request": {
+        "body": {
+          "content_type": "text/plain",
+          "raw": "not json at all"
+        },
+        "method": "POST",
+        "path": "/newauth.do",
+        "port": "http"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "newauth malformed"
+    }
+  ]
+}

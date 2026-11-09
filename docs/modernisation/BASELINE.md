@@ -147,3 +147,109 @@ below and in `CHANGES.md`.
   `ConfServer.stop_server()`. `start()` starts the web servers through
   `start_site()`, which never sets `self.runner`, so `shutdown()` cannot stop
   them this way. This is logged and swallowed; the tests still pass.
+
+## Characterisation harness on the legacy code (`.venv-legacy-harness`)
+
+The black-box harness in `tests/harness/` (see its README) was written and
+its goldens recorded **before any production change**, against the unmodified
+code on Python 3.9.25 + the original pins:
+
+```bash
+BUMPER_HARNESS_PROFILE=legacy BUMPER_HARNESS_RECORD=1 .venv-legacy-harness/bin/python -m pytest tests/harness
+```
+
+Then, in compare mode, three times in a row:
+
+```
+== run 1   39 passed in 49.60s
+== run 2   39 passed in 50.76s
+== run 3   39 passed in 49.69s
+```
+
+No flakiness and no port collisions (every run picks free ephemeral ports).
+The harness was also checked for sensitivity. Against a scratch copy of
+`bumper/` (via `BUMPER_HARNESS_SRC`) where one plugin used `datetime.now()`
+instead of `datetime.utcnow()` and the iot request id was 5 instead of 4
+letters, both mutations were reported as golden diffs.
+
+Coverage: 13 HTTP scenarios with 132 requests (plus 4 MQTT bot connect/disconnect steps) reach all **57 route entries**
+(`test_route_coverage.py`), plus 9 MQTT, 3 XMPP, 12 TLS-matrix and 1 restart
+test.
+
+## TLS versions accepted by the legacy code
+
+Recorded in `tests/harness/golden/tls_matrix.json`. All three endpoints
+(443, 8883, 5223 after STARTTLS) behave the same:
+
+| environment | TLS 1.0 | TLS 1.1 | TLS 1.2 | TLS 1.3 |
+|---|---|---|---|---|
+| Python 3.9.25, OpenSSL 3.5.4 (legacy harness venv, **the goldens**) | rejected | rejected | accepted | accepted |
+| `python:3.7-alpine` as published today (3.7.17, Alpine 3.18, OpenSSL 3.1.3) | rejected | rejected | accepted | accepted |
+| Alpine 3.13, Python 3.8.15, OpenSSL 1.1.1q (stand-in for the June-2021 image) | **accepted** | **accepted** | accepted | accepted |
+
+Why: the legacy code builds its server contexts with
+`ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)`. Before Python 3.10 that
+sets no minimum protocol version. Whether TLS 1.0/1.1 work then depends only
+on OpenSSL: OpenSSL 1.1.1 allows them at its default security level, but
+OpenSSL 3.x only allows them at `@SECLEVEL=0`. So the **same unmodified code**
+accepted TLS 1.0 in the image users actually ran in 2021 (Alpine with OpenSSL
+1.1.1) and rejects it when rebuilt today, or on any OpenSSL 3 host.
+
+The 2021 base tag (`python:3.7.10-alpine3.13`) could not be pulled here
+(Docker Hub and both mirrors rate-limited the request). The stand-in uses the
+same Alpine release and OpenSSL 1.1.1 line, with Alpine's packaged Python 3.8.
+For this question Python 3.7 and 3.8 behave the same (`create_default_context`
+only gained a TLS 1.2 minimum in 3.10).
+
+The goldens record the Python 3.9/OpenSSL 3 behaviour as observed. The
+required end state (accept TLS 1.0+ by default, as the 2021 image did) is a
+deliberate change from those goldens and is documented in `CHANGES.md`.
+
+### Whole-harness comparison against the legacy images
+
+Both images were built from the pre-port commit's `bumper/` and
+`requirements.txt` (scratch builds, not committed), started with the test
+certificates, and the harness was run with `BUMPER_HARNESS_TARGET=host`.
+
+| image | result vs. the 3.9 goldens |
+|---|---|
+| `python:3.7-alpine` today (3.7.17, OpenSSL 3.1.3) | 36 passed, 3 failed: `test_helperbot_round_trips` (`lg/log.do` returns logs), `test_app_client_session` and `test_bot_and_app_routing` (XMPP bind answers and stanzas are routed) |
+| Alpine 3.13 / Python 3.8 / OpenSSL 1.1.1q | the same 3, plus the six TLS 1.0/1.1 cells (accepted) |
+
+That confirms the two legacy-environment variables: `getchildren()`
+(Python >= 3.9) and OpenSSL >= 3 rejecting TLS < 1.2. Everything else is
+identical across Python 3.7, 3.8 and 3.9.
+
+## Legacy behaviour captured by the goldens that is worth knowing
+
+These are recorded as-is. They are listed here so that nobody "fixes" them
+by accident:
+
+* **Handler errors drop the connection.** About 15 error paths (malformed JSON
+  to `lookup.do`/`newauth.do`/devmanager, missing query parameters,
+  `getUserAccountInfo` for non-Home apps, unknown OAuth codes, ...) make the
+  handler return `None`. aiohttp 3.6 then crashes internally (`'NoneType'
+  object has no attribute 'keep_alive'`) and closes the connection without
+  sending a response. Other error paths answer `200` with `{}`,
+  `{"result": "fail"}` or `null`.
+* **`SetDeviceNick`/`AddOneDevice` for an unknown DID** upserts a bot document
+  without a `did` (TinyDB `upsert` inserts when nothing matches). Afterwards
+  `GetGlobalDeviceList` answers `{"result": "fail"}` (KeyError on `class`)
+  until that document is removed, which is impossible over HTTP.
+* **Timestamps** in the v1/v2 API envelopes (`time`, `serverTime`,
+  `getTimestamp`) are `datetime.utcnow().timestamp()`, i.e. off by the server's
+  UTC offset. The harness runs Bumper in UTC+3 and records them as `now-3h`.
+  `nextAlertTime` is local `now + 12h` (correct), and OAuth `expire_at` is
+  `utcnow + 15 days` interpreted as local time (`now+357h` in UTC+3).
+* **MQTT auth failures** (bad password, unknown user, anonymous) are answered
+  by closing the connection **without a CONNACK**.
+* **Auth is not enforced** for app clients (`bumper.use_auth` is `False`): an
+  MQTT app client with a wrong auth code connects, and XMPP clients are
+  accepted with any credentials.
+* **XMPP STARTTLS is advertised as `<required/>` but not enforced**: SASL PLAIN
+  over the plain TCP connection succeeds.
+* **The status page keeps disconnected MQTT sessions**: hbmqtt never removes a
+  clean session after disconnect, so the session table lists `disconnected`
+  rows forever.
+* `GET /` answers the status page because aiohttp turns the root route's empty
+  path into `/` when the app is frozen.

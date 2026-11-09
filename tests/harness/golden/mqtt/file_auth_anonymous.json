@@ -1,0 +1,5 @@
+{
+  "client_id": "anonymous-client",
+  "connack": "connection closed without CONNACK",
+  "username": null
+}

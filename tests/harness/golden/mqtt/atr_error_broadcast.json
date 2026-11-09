@@ -1,0 +1,7 @@
+{
+  "bot_still_connected": true,
+  "watcher_received": {
+    "payload": "{\"code\": 102, \"ts\": 1600000000000}",
+    "topic": "iot/atr/errors/E2004/ls1ok3/wC3g/j"
+  }
+}

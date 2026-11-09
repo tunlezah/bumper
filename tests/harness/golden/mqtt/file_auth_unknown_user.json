@@ -1,0 +1,5 @@
+{
+  "client_id": "test-file-auth-unknown",
+  "connack": "connection closed without CONNACK",
+  "username": "nobody"
+}

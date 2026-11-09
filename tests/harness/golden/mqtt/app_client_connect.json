@@ -1,0 +1,11 @@
+{
+  "client_rows_after_disconnect": [
+    "<TR>\n            <TD>fuid_tmpuser</TD>\n            <TD>ecouser</TD>\n            <TD>IOSMQTT01</TD>\n            <TD > False </TD>\n            <TD > False</TD>        \n            <TD> <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"removeClient('IOSMQTT01');\">Remove</button> </TD>\n        </TR>"
+  ],
+  "connack_with_auth_code": "Success",
+  "connack_with_wrong_code": "Success",
+  "status_rows_connected": [
+    "<TR>\n            <TD>fuid_tmpuser</TD>\n            <TD>fuid_tmpuser@ecouser/IOSMQTT01</TD>       \n            <TD  class=\"table-success\" > connected </TD>\n        </TR>",
+    "<TR>\n            <TD>fuid_tmpuser</TD>\n            <TD>ecouser</TD>\n            <TD>IOSMQTT01</TD>\n            <TD  class=\"table-success\" > True </TD>\n            <TD > False</TD>        \n            <TD> <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"removeClient('IOSMQTT01');\">Remove</button> </TD>\n        </TR>"
+  ]
+}

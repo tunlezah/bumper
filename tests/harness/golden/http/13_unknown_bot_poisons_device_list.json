@@ -1,0 +1,147 @@
+{
+  "description": "Legacy quirk: SetDeviceNick for an unknown DID upserts a bot document without a DID, after which GetGlobalDeviceList fails. Runs last because it cannot be undone over HTTP.",
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "json": {
+            "auth": {
+              "realm": "ecouser.net",
+              "resource": "dev_1234",
+              "token": "token_1234",
+              "userid": "testuser",
+              "with": "users"
+            },
+            "did": "did_missing",
+            "todo": "DeleteOneDevice"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users DeleteOneDevice for unknown bot"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "auth": {
+              "realm": "ecouser.net",
+              "resource": "dev_1234",
+              "token": "token_1234",
+              "userid": "testuser",
+              "with": "users"
+            },
+            "did": "did_missing",
+            "nick": "botnick",
+            "todo": "SetDeviceNick"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users SetDeviceNick for unknown bot"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "auth": {
+              "realm": "ecouser.net",
+              "resource": "dev_1234",
+              "token": "token_1234",
+              "userid": "testuser",
+              "with": "users"
+            },
+            "todo": "GetDeviceList",
+            "userid": "testuser"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "devices": [
+            {
+              "nick": "botnick"
+            }
+          ],
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users GetDeviceList now lists a bot without DID"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "aliliving": false,
+            "appVer": "1.1.6",
+            "auth": {
+              "realm": "ecouser.net",
+              "resource": "ECOGLOBLEac5ae987",
+              "token": "token_1234",
+              "userid": "testuser",
+              "with": "users"
+            },
+            "channel": "google_play",
+            "defaultLang": "en",
+            "lang": "en",
+            "platform": "Android",
+            "todo": "GetGlobalDeviceList",
+            "userid": "testuser"
+          }
+        },
+        "method": "POST",
+        "path": "/api/appsvr/app.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr GetGlobalDeviceList now fails"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/",
+        "port": "http"
+      },
+      "response": {
+        "body_text": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <link rel=\"stylesheet\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css\" integrity=\"sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh\" crossorigin=\"anonymous\">\n    <title>Bumper</title>\n    <meta http-equiv=\"refresh\" content=\"5\" />\n    <script>\n    function restartService(service) {\n        console.log(\"restart service\", service);\n        fetch('restart_' + service)\n        .then((response) => {\n           return response.json();\n        })\n        .then((myJson) => {\n            alert(\"Restarting \" + service + \": \" + myJson[\"status\"])\n            console.log(\"restart\",service,\"-\",myJson[\"status\"]);\n        });\n        \n    }\n\n    function removeBot(did) {\n        console.log(\"remove bot\",did);\n        fetch('bot/remove/' + did)\n        .then((response) => {\n            return response.json();\n        })\n        .then((myJson) => {\n            alert(\"Removing Bot (DID) - \" + did + \" - \" + myJson[\"status\"])\n            console.log(\"remove bot\",did, myJson[\"status\"]);\n        });\n        \n    }\n\n\n    function removeClient(resource) {\n\n        console.log(\"remove client\",resource);\n        fetch('client/remove/' + resource)\n        .then((response) => {\n            return response.json();\n        })\n        .then((myJson) => {\n            alert(\"Removing Client - resource - \" + resource + \" - \" + myJson[\"status\"])\n            console.log(\"remove client\",resource, myJson[\"status\"]);\n        });\n        \n    }\n\n    </script>\n</head>\n<body>\n    <ul id=\"navigation\">\n    \n    </ul>\n\n<div class=\"col-8\">\n    <h1>Bumper</h1>\n    \n    <!-- Section Stats -->\n    <div class=\"card bg-light border-dark\">\n        <div class=\"card-header\">\n            <h2 class=\"card-title\">Server Status</h2>\n        </div>    \n        <div class=\"card-body\">\n        \n        <div class=\"card border border-dark\">\n        <div class=\"card card-header\">\n            <h3 class=\"card-title\">MQTT Server</h3>\n            <div>Action: <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"restartService('MQTTServer');\">Restart Service</button></div>\n        </div>    \n        <div class=\"card-body\">\n        Status:  <span class=\"badge badge-success\">started</span> \n        Sessions: 3\n        \n        <table class=\"table table-striped table-bordered table-responsive-lg\">\n        <thead class=\"thead-dark\">\n        <TH>username</TH><TH>clientid</TH><TH>state</TH>\n        </thead>\n        \n        <TR>\n            <TD>None</TD>\n            <TD>helperbot@bumper/helperbot</TD>       \n            <TD  class=\"table-success\" > connected </TD>\n        </TR>\n        \n        <TR>\n            <TD>botsn_E1001</TD>\n            <TD>E1001@ls1ok3/wC3g</TD>       \n            <TD > disconnected </TD>\n        </TR>\n        \n        <TR>\n            <TD>botsn_E1002</TD>\n            <TD>E1002@zz9zz9/res2</TD>       \n            <TD > disconnected </TD>\n        </TR>\n        \n        </table>\n        \n        </div>\n        </div>\n\n        </br>\n\n        <div class=\"card border border-dark\">\n        <div class=\"card card-header\">\n            <h3 class=\"card-title\">XMPP Server</h3>\n            <div>Action: <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"restartService('XMPPServer');\">Restart Service</button></div>\n        </div>    \n        <div class=\"card-body\">\n        Status:  <span class=\"badge badge-success\">running</span> \n        Clients: 0\n        \n        <table class=\"table table-striped table-bordered table-responsive-lg\">\n        <thead class=\"thead-dark\">\n        <TH>uid</TH><TH>jid</TH><TH>state</TH>\n        </thead>\n        \n        </table>    \n\n        </div>\n        </div>\n\n        </br>\n\n        <div class=\"card border border-dark\">\n        <div class=\"card card-header\">\n            <h3 class=\"card-title\">Helperbot</h3>\n            <div>Action: <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"restartService('Helperbot');\">Restart Service</button></div>\n            \n        </div>    \n        \n        <div class=\"card-body\">\n        Status:  <span class=\"badge badge-success\">connected</span> \n\n        </div>\n        </div>\n        \n        </div>\n    </div>\n\n    </br>\n\n    <!-- Section Bots -->\n    <div class=\"card border-dark\">\n        <div class=\"card-header\">\n            <h2 class=\"card-title\">Bots</h2>\n        </div>    \n        <div class=\"card-body\">\n        <table class=\"table table-striped table-bordered table-responsive-lg\">\n        <thead class=\"thead-dark\">\n        <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>\n        </thead>\n        \n        <TR>\n            <TD></TD>\n            <TD>botnick</TD>\n            <TD></TD>\n            <TD></TD>\n            <TD> </TD>\n            <TD> </TD>\n            \n            <TD >  </TD>\n            <TD > </TD>\n            <TD> <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"removeBot('');\">Remove</button> </TD>\n        </TR>\n        \n        </table>\n        </div>\n    </div>\n\n</br>\n\n    <!-- Section Clients -->\n    <div class=\"card border-dark\">\n        <div class=\"card-header\">\n            <h2 class=\"card-title\">Clients</h2>\n        </div>    \n        <div class=\"card-body\">\n        <table class=\"table table-striped table-bordered table-responsive-lg\">\n        <thead class=\"thead-dark\">\n        <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>\n        </thead>\n        \n        </table>\n        </div>    \n    </div>\n    \n</div>    \n</body>\n</html>",
+        "content_type": "text/html; charset=utf-8",
+        "status": 200
+      },
+      "step": "status page shows the DID-less bot"
+    }
+  ]
+}

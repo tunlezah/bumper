@@ -1,0 +1,442 @@
+{
+  "description": "v1 private endpoints that return fixed bodies (apart from timestamps).",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/common/checkVersion",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "c": null,
+            "img": null,
+            "r": 0,
+            "t": null,
+            "u": null,
+            "ut": 0,
+            "v": null
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkVersion"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/checkAPPVersion",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "c": null,
+            "downPageUrl": null,
+            "img": null,
+            "nextAlertTime": null,
+            "r": 0,
+            "t": null,
+            "u": null,
+            "ut": 0,
+            "v": null
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkAPPVersion"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "deviceId": "dev_home_5678",
+            "platform": "Android"
+          }
+        },
+        "method": "POST",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/uploadDeviceInfo",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "uploadDeviceInfo"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getSystemReminder",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "iosGradeTime": {
+              "iodGradeFlag": "N"
+            },
+            "openNotification": {
+              "openNotificationContent": null,
+              "openNotificationFlag": "N",
+              "openNotificationTitle": null
+            }
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getSystemReminder"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getConfig?keys=SHOW_SHOPPING_MALL,OPEN_REALTIME_MAP",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [
+            {
+              "key": "SHOW_SHOPPING_MALL",
+              "value": "Y"
+            },
+            {
+              "key": "OPEN_REALTIME_MAP",
+              "value": "Y"
+            }
+          ],
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getConfig with keys"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getConfig",
+        "port": "https"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "getConfig without keys"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getAreas",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "_digest": {
+              "length": 15890,
+              "sha256": "cf8d1b7d14d2e45f1ed8fa5d2ce9660dffc46d89cf30aa195c04be56b9f08bd9"
+            }
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getAreas"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getAgreementURLBatch",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [
+            {
+              "acceptTime": null,
+              "force": null,
+              "id": "20180804040641_7d746faf18b8cb22a50d145598fe4c90",
+              "type": "USER",
+              "url": "https://gl-eu-wap.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN",
+              "version": "1.03"
+            },
+            {
+              "acceptTime": null,
+              "force": null,
+              "id": "20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac",
+              "type": "PRIVACY",
+              "url": "https://gl-eu-wap.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN",
+              "version": "1.03"
+            }
+          ],
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getAgreementURLBatch"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getTimestamp",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "timestamp": "<ms-epoch now-3h>"
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getTimestamp"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/ad/getAdByPositionType",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getAdByPositionType"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/ad/getBootScreen",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getBootScreen"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/campaign/homePageAlert",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "clickSchemeUrl": null,
+            "clickWebUrl": null,
+            "hasCampaign": "N",
+            "imageUrl": null,
+            "nextAlertTime": "<ms-epoch now+12h>",
+            "serverTime": "<ms-epoch now-3h>"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "homePageAlert"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/message/hasUnreadMsg",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": "N",
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "hasUnreadMsg"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/message/getMsgList",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "hasNextPage": 0,
+            "items": []
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getMsgList"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/shop/getCnWapShopConfig",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "myShopShowFlag": "N",
+            "myShopUrl": "",
+            "shopIndexShowFlag": "N",
+            "shopIndexUrl": ""
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getCnWapShopConfig"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/userSetting/getSuggestionSetting",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "acceptSuggestion": "Y",
+            "itemList": [
+              {
+                "name": "Aktionen/Angebote/Ereignisse",
+                "settingKey": "MARKETING",
+                "val": "Y"
+              },
+              {
+                "name": "Benutzerbefragung",
+                "settingKey": "QUESTIONNAIRE",
+                "val": "Y"
+              },
+              {
+                "name": "Produkt-Upgrade/Hilfe für Benutzer",
+                "settingKey": "INTRODUCTION",
+                "val": "Y"
+              }
+            ]
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getSuggestionSetting"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {}
+        },
+        "method": "POST",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/common/checkVersion",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "c": null,
+            "img": null,
+            "r": 0,
+            "t": null,
+            "u": null,
+            "ut": 0,
+            "v": null
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkVersion over plain HTTP via POST"
+    }
+  ]
+}

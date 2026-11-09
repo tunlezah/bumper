@@ -1,0 +1,14 @@
+{
+  "https TLSv1": "rejected",
+  "https TLSv1_1": "rejected",
+  "https TLSv1_2": "accepted",
+  "https TLSv1_3": "accepted",
+  "mqtt TLSv1": "rejected",
+  "mqtt TLSv1_1": "rejected",
+  "mqtt TLSv1_2": "accepted",
+  "mqtt TLSv1_3": "accepted",
+  "xmpp TLSv1": "rejected",
+  "xmpp TLSv1_1": "rejected",
+  "xmpp TLSv1_2": "accepted",
+  "xmpp TLSv1_3": "accepted"
+}

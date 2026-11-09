@@ -1,0 +1,74 @@
+{
+  "description": "getAuthCode without a valid user or token, and with a missing query parameter.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_nobody/ios/1/0/0/user/getAuthCode?uid=None&accessToken=None",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0004",
+          "data": null,
+          "msg": "当前密码错误",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "private getAuthCode unknown device"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=0123456789abcdef0123456789abcdef",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0004",
+          "data": null,
+          "msg": "当前密码错误",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "private getAuthCode known device wrong token"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/global/auth/getAuthCode?uid=None&deviceId=dev_nobody",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0004",
+          "data": null,
+          "msg": "当前密码错误",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "global getAuthCode unknown device"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/global/auth/getAuthCode?uid=None",
+        "port": "https"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "global getAuthCode without deviceId"
+    }
+  ]
+}

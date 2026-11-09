@@ -1,0 +1,19 @@
+{
+  "bot_received": [
+    {
+      "payload": "<ctl td='GetChargeState'/>",
+      "topic": "iot/p2p/GetChargeState/helperbot/bumper/helperbot/E2003/ls1ok3/wC3g/q/<random-alpha-4>/x"
+    }
+  ],
+  "response": {
+    "body": {
+      "debug": "wait for response timed out",
+      "errno": 500,
+      "id": "<random-alpha-4>",
+      "ret": "fail"
+    },
+    "content_type": "application/json; charset=utf-8",
+    "status": 200
+  },
+  "waited_at_least_9s": true
+}
