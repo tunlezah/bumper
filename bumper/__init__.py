@@ -4,6 +4,7 @@ from bumper.confserver import ConfServer
 from bumper.mqttserver import MQTTServer, MQTTHelperBot, broker_state, client_is_connected
 from bumper.xmppserver import XMPPServer
 from bumper import tls
+from bumper import tasks
 from bumper.models import *
 from bumper.db import *
 import asyncio
@@ -240,10 +241,10 @@ async def start():
     await asyncio.create_task(mqtt_server.broker_coro())
 
     # Start MQTT Helperbot
-    asyncio.create_task(mqtt_helperbot.start_helper_bot())
+    tasks.spawn(mqtt_helperbot.start_helper_bot())
 
     # Start XMPP Server
-    asyncio.create_task(xmpp_server.start_async_server())
+    tasks.spawn(xmpp_server.start_async_server())
 
     # Wait for helperbot to connect first
     while mqtt_helperbot.Client is None:
@@ -254,12 +255,12 @@ async def start():
 
     # Start web servers
     conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
-    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
+    tasks.spawn(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
+    tasks.spawn(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
 
     # Start maintenance
     while not shutting_down:
-        asyncio.create_task(maintenance())
+        tasks.spawn(maintenance())
         await asyncio.sleep(5)
 
 
@@ -283,7 +284,7 @@ async def shutdown():
                 await mqtt_server.broker.shutdown()
                 await mqtt_helperbot.Client.disconnect()
         if xmpp_server.server:
-            if xmpp_server.server._serving:
+            if xmpp_server.server.is_serving():
                 xmpp_server.server.close()
             await xmpp_server.server.wait_closed()
         global shutting_down

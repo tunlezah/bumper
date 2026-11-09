@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import base64
 import bumper
 from bumper import tls
+from bumper import tasks
 import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
@@ -40,7 +41,7 @@ class XMPPServer:
 
         except PermissionError as e:
             xmppserverlog.error(e.strerror)
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
             pass
 
         except asyncio.CancelledError:
@@ -48,7 +49,7 @@ class XMPPServer:
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
     def disconnect(self):
 
@@ -300,7 +301,7 @@ class XMPPAsyncClient:
             )
             self.send(pingstring)
             await asyncio.sleep(time)
-            asyncio.Task(self.schedule_ping(time))
+            tasks.spawn(self.schedule_ping(time))
 
     def _handle_result(self, xml, data):
         try:
@@ -622,7 +623,7 @@ class XMPPAsyncClient:
         res = '<iq type="result" id="{}" />'.format(xml.get("id"))
         self._set_state("READY")
         self.send(res)
-        asyncio.Task(self.schedule_ping(30))
+        tasks.spawn(self.schedule_ping(30))
 
     def _handle_presence(self, xml):
 
@@ -739,7 +740,7 @@ class XMPPAsyncClient:
 
                     elif "-tls" in item.tag:
                         if not self.TLSUpgraded:
-                            asyncio.Task(self._handle_starttls(newdata.encode("utf-8")))
+                            tasks.spawn(self._handle_starttls(newdata.encode("utf-8")))
 
                     elif "presence" in item.tag:
                         self._handle_presence(item)

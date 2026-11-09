@@ -9,7 +9,7 @@ import aiohttp_jinja2
 import jinja2
 from aiohttp import web
 
-from bumper import plugins, tls
+from bumper import plugins, tasks, tls
 from bumper.models import *
 import weakref
 
@@ -152,14 +152,14 @@ class ConfServer:
 
         except PermissionError as e:
             confserverlog.error(e.strerror)
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
         except asyncio.CancelledError:
             pass
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
     async def stop_server(self):
         try:
@@ -286,7 +286,7 @@ class ConfServer:
     async def restart_Helper(self):
 
         await bumper.mqtt_helperbot.Client.disconnect()
-        asyncio.create_task(bumper.mqtt_helperbot.start_helper_bot())
+        tasks.spawn(bumper.mqtt_helperbot.start_helper_bot())
 
     async def restart_MQTT(self):
         
@@ -300,13 +300,13 @@ class ConfServer:
             #await bumper.mqtt_server.broker.shutdown()
             aloop = asyncio.get_running_loop()
             aloop.call_later(
-            0.1, lambda: asyncio.create_task(bumper.mqtt_server.broker.shutdown())
+            0.1, lambda: tasks.spawn(bumper.mqtt_server.broker.shutdown())
             )  # In .1 seconds shutdown broker
 
         
         aloop = asyncio.get_running_loop()
         aloop.call_later(
-           1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
+           1.5, lambda: tasks.spawn(bumper.mqtt_server.broker_coro())
         )  # In 1.5 seconds start broker
 
     async def restart_XMPP(self):
@@ -320,10 +320,10 @@ class ConfServer:
                 await self.restart_Helper()
                 return web.json_response({"status": "complete"})
             elif service == "MQTTServer":
-                asyncio.create_task(self.restart_MQTT())
+                tasks.spawn(self.restart_MQTT())
                 aloop = asyncio.get_running_loop()
                 aloop.call_later(
-                    5, lambda: asyncio.create_task(self.restart_Helper())
+                    5, lambda: tasks.spawn(self.restart_Helper())
                 )  # In 5 seconds restart Helperbot
                 
                 return web.json_response({"status": "complete"})
