@@ -284,7 +284,7 @@ dependencies = [
     { name = "aiohttp-jinja2" },
     { name = "amqtt" },
     { name = "jinja2" },
-    { name = "passlib" },
+    { name = "libpass" },
     { name = "tinydb" },
 ]
 
@@ -302,7 +302,7 @@ requires-dist = [
     { name = "aiohttp-jinja2", specifier = ">=1.6,<2" },
     { name = "amqtt", specifier = ">=0.12,<0.13" },
     { name = "jinja2", specifier = ">=3.1,<4" },
-    { name = "passlib", specifier = ">=1.7.4,<1.8" },
+    { name = "libpass", specifier = ">=1.9,<2" },
     { name = "tinydb", specifier = ">=4.8,<5" },
 ]
 
@@ -534,6 +534,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
+]
+
+[[package]]
+name = "libpass"
+version = "1.9.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/2d/953db970fa7bccd1d74e2870158878ab5b46776f3f34180ca49ce93c4ac8/libpass-1.9.4.tar.gz", hash = "sha256:4ff9a5ebf51aad1e8164453bc29c4a06926cf175a9501d87205612ba247f3cbd", size = 704877, upload-time = "2026-10-17T07:49:01.714Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/35/d08a8175f20cb453b3133845afce81378437730f5cd402bb411a5fd54841/libpass-1.9.4-py3-none-any.whl", hash = "sha256:a608621af2d7d64579957988fac287f230f88792c83a2d0f895afb05ee429489", size = 307138, upload-time = "2026-10-17T07:49:00.39Z" },
 ]
 
 [[package]]
@@ -824,15 +833,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/da/66/bba39edaac853235385c59e1e30600cd104b8779164c181780742d8095fc/paho_mqtt-2.2.0.tar.gz", hash = "sha256:bcf706f03f1f49e0fc3ae166dc7b67ee35463496f8bdfd7c9c36181f6ba635c9", size = 133751, upload-time = "2026-11-04T20:10:51.405Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bf/af/fea4b0ee14cee6149f18d180430a14be0963b9a4fbc7875421a7de75f831/paho_mqtt-2.2.0-py3-none-any.whl", hash = "sha256:3243630f7c2b05f71d1de8c6f59865eb04d3a59ae8c866e92377faed6753db4d", size = 77202, upload-time = "2026-11-04T20:10:50.148Z" },
-]
-
-[[package]]
-name = "passlib"
-version = "1.7.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b6/06/9da9ee59a67fae7761aab3ccc84fa4f3f33f125b370f1ccdb915bf967c11/passlib-1.7.4.tar.gz", hash = "sha256:defd50f72b65c5402ab2c573830a6978e5f202ad0d984793c8dde2c4152ebe04", size = 689844, upload-time = "2020-10-08T19:00:52.121Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/a4/ab6b7589382ca3df236e03faa71deac88cae040af60c071a78d254a62172/passlib-1.7.4-py2.py3-none-any.whl", hash = "sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1", size = 525554, upload-time = "2020-10-08T19:00:49.856Z" },
 ]
 
 [[package]]

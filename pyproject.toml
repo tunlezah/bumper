@@ -20,7 +20,7 @@ dependencies = [
     "jinja2>=3.1,<4",
     "amqtt>=0.12,<0.13",
     "tinydb>=4.8,<5",
-    "passlib>=1.7.4,<1.8",
+    "libpass>=1.9,<2",  # maintained fork of passlib (same "passlib" import)
 ]
 
 [project.urls]
