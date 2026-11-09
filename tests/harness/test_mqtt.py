@@ -163,3 +163,30 @@ def test_atr_error_broadcast(target):
         "bot_still_connected": still_connected,
     }
     golden.check("mqtt/atr_error_broadcast", record)
+
+
+def test_single_level_wildcard(target):
+    """What a '+' subscription receives. MQTT says '+' matches exactly one
+    topic level; the legacy broker compiled it to a regex that also matched
+    several levels."""
+    publisher = MqttConn(target, "E2005@ls1ok3/wC3g", "botsn_E2005", "botpassword")
+    shallow = MqttConn(target, "fuid_tmpuser@ecouser/WILDCARD1", "fuid_tmpuser", "x")
+    exact = MqttConn(target, "fuid_tmpuser@ecouser/WILDCARD2", "fuid_tmpuser", "x")
+    for conn in (publisher, shallow, exact):
+        assert conn.connect() == "Success"
+    try:
+        shallow.subscribe("iot/atr/+")
+        exact.subscribe("iot/atr/+/E2005/ls1ok3/wC3g/+")
+        publisher.publish("iot/atr/DustCaseST/E2005/ls1ok3/wC3g/x", b"<ctl td='DustCaseST' st='0'/>")
+        exact_got = exact.next_message(timeout=10)
+        shallow_got = shallow.next_message(timeout=2)
+    finally:
+        for conn in (publisher, shallow, exact):
+            conn.disconnect()
+    golden.check(
+        "mqtt/single_level_wildcard",
+        {
+            "subscribed iot/atr/+/E2005/ls1ok3/wC3g/+": None if exact_got is None else exact_got[0],
+            "subscribed iot/atr/+": None if shallow_got is None else shallow_got[0],
+        },
+    )

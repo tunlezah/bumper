@@ -114,12 +114,25 @@ def c005_getchildren(name, path, old, new):
         return False
 
 
+def c007_single_level_wildcard(name, path, old, new):
+    """'+' matches exactly one topic level (MQTT 3.1.1 4.7.1.3); the legacy
+    broker's regex let it match several."""
+    return (
+        name == "mqtt/single_level_wildcard"
+        and path == ("subscribed iot/atr/+",)
+        and isinstance(old, str)
+        and old.count("/") > 2
+        and new is None
+    )
+
+
 PREDICATES = {
     "C-001": c001_handler_errors_are_500,
     "C-002": c002_mqtt_auth_failure_connack,
     "C-003": c003_no_disconnected_mqtt_sessions,
     "C-004": c004_tls_policy,
     "C-005": c005_getchildren,
+    "C-007": c007_single_level_wildcard,
 }
 
 

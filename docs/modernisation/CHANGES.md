@@ -182,6 +182,30 @@ New in the same commit, without changing defaults: `BUMPER_PORT_HTTPS`,
 `BUMPER_PORT_HTTP`, `BUMPER_PORT_MQTT`, `BUMPER_PORT_XMPP` (defaults 443,
 8007, 8883, 5223). Bots are still told that XMPP is on 5223.
 
+### C-007
+
+**The MQTT single-level wildcard `+` matches exactly one topic level.**
+
+*Legacy:* hbmqtt compiled `+` into the regex `[/\$\s\w\d]+`, which matches
+`/` too. A subscription to `iot/atr/+` received
+`iot/atr/DustCaseST/<did>/<class>/<res>/x`. The same regex also did *not*
+match levels containing characters such as `-` or `.`.
+
+*Now:* amqtt implements MQTT 3.1.1 §4.7.1.3: `+` matches exactly one level,
+of any characters. Use `#` for several levels.
+
+*Why:* broker semantics come from amqtt. Emulating the old matcher would mean
+replacing amqtt's private topic matching. Bumper does not depend on it: bot
+responses and broadcasts are handled from the broker's message-received
+event, not through the helperbot's subscriptions (`iot/p2p/+`,
+`iot/atr/+`, which now match nothing; see follow-ups). The Ecovacs apps and
+libraries we know of subscribe with one `+` per level, which works the
+same as before (the `exact` subscriber in the golden).
+
+*Golden:* `mqtt/single_level_wildcard` (characterisation added while porting
+the unit tests, which had relied on the old matcher; recorded from the legacy
+code).
+
 ## Remaining private-API touchpoints
 
 ## Follow-ups (not done in this port)
@@ -202,5 +226,17 @@ Fixing it means `int(time.time() * 1000)` for the timestamps, and aware
 datetimes (or epoch seconds) for the OAuth expiry plus a migration for stored
 `expire_at` strings. It needs its own commit, a golden change (`now-3h` →
 `now+0h`) and a check that current Ecovacs apps don't depend on the skew.
+
+### F-02 The helperbot subscribes to topics it never reads
+
+`MQTTHelperBot` subscribes to `iot/p2p/+/+/+/+/helperbot/bumper/helperbot/+/+/+`,
+`iot/p2p/+` and `iot/atr/+`, but never calls `deliver_message()`: command
+responses are taken from the broker's message-received event instead. amqtt
+(like hbmqtt before it) queues every matching message in the client session's
+unbounded `delivered_message_queue`, so the helperbot slowly accumulates one
+queued message per command response for the life of the process. Before the
+port, the over-matching `+` (C-007) made this worse (every bot broadcast was
+queued as well). The fix is to drop the subscriptions, or drain the queue.
+This changes broker-visible subscriptions, so it belongs in its own change.
 
 ## Needs real-device testing
