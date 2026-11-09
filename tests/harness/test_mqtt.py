@@ -84,7 +84,13 @@ def test_file_auth_and_anonymous(target, case, client_id, username, password):
     conn = MqttConn(target, client_id, username, password)
     connack = conn.connect()
     conn.disconnect()
-    golden.check("mqtt/file_auth_" + case, {"client_id": client_id, "username": username, "connack": connack})
+    record = {"client_id": client_id, "username": username, "connack": connack}
+    if case != "valid":
+        # A refused client must not show up on the status page. (Disconnected
+        # sessions of accepted clients are covered by the HTTP scenarios.)
+        wait_until(lambda: not status_rows(target, client_id), timeout=5)
+        record["status_rows"] = status_rows(target, client_id)
+    golden.check("mqtt/file_auth_" + case, record)
 
 
 def test_helperbot_round_trips(target):

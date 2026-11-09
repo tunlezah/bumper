@@ -1,5 +1,8 @@
 {
   "client_id": "anonymous-client",
   "connack": "connection closed without CONNACK",
+  "status_rows": [
+    "<TR>\n            <TD>None</TD>\n            <TD>anonymous-client</TD>       \n            <TD > new </TD>\n        </TR>"
+  ],
   "username": null
 }

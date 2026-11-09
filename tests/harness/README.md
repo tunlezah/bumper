@@ -65,10 +65,10 @@ on purpose, the legacy golden stays as it is and a file with the same name is
 added under `golden_changes/`:
 
 ```json
-{"change": "C-001", "reason": "...", "expected": { ... }}
+{"changes": ["C-001"], "reason": "...", "expected": { ... }}
 ```
 
-`change` points at an entry in `docs/modernisation/CHANGES.md`. The modern
+`changes` point at entries in `docs/modernisation/CHANGES.md`, and `test_golden_changes.py` (no server needed) checks that every difference from the legacy golden is explained by one of them (`harnesslib/changes.py`). The modern
 profile compares against `expected`; the legacy profile ignores
 `golden_changes/`, so CI can keep proving that `golden/` matches the legacy
 code. `BUMPER_HARNESS_RECORD=changes` rewrites the `expected` block of

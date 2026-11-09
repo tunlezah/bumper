@@ -10,9 +10,11 @@ Layout
 ``golden_changes/<name>.json``
     A deliberate, documented behaviour change. Hand-written, with::
 
-        {"change": "C-00N", "reason": "...", "expected": <what the port does>}
+        {"changes": ["C-00N"], "reason": "...", "expected": <what the port does>}
 
-    ``change`` refers to an entry in docs/modernisation/CHANGES.md. With the
+    ``changes`` refers to entries in docs/modernisation/CHANGES.md, and
+    test_golden_changes.py checks that every difference from the legacy golden
+    is explained by one of them (harnesslib/changes.py). With the
     default ``modern`` profile the ``expected`` block replaces the legacy
     golden; with ``BUMPER_HARNESS_PROFILE=legacy`` it is ignored, so the legacy
     goldens stay provably tied to the legacy code.
@@ -68,7 +70,7 @@ def expected_for(name):
     if config.PROFILE == "modern" and os.path.exists(cpath):
         change = _load(cpath)
         expected = change["expected"]
-        source = "deliberate change {} ({})".format(change["change"], os.path.relpath(cpath, config.REPO_DIR))
+        source = "deliberate change {} ({})".format(", ".join(change["changes"]), os.path.relpath(cpath, config.REPO_DIR))
     return expected, source
 
 
