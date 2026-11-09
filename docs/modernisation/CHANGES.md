@@ -8,6 +8,26 @@ has a matching `golden_changes/` override in the harness, and
 overrides differ from the legacy goldens *only* in the ways described here
 (predicates in `tests/harness/harnesslib/changes.py`).
 
+## Summary
+
+| | before | after |
+|---|---|---|
+| Python | 3.8 / 3.9 only (Docker: 3.7) | 3.12, 3.13, 3.14 (Docker: 3.13) |
+| MQTT broker/client | hbmqtt 0.9.5 (unmaintained) | amqtt 0.12 |
+| HTTP | aiohttp 3.6.2 | aiohttp 3.14 |
+| DB | TinyDB 3.15, a new never-closed handle per call (closed only by GC, with a `ResourceWarning`) | TinyDB 4.9, one shared instance, closed on shutdown |
+| Password hashes | passlib 1.7.2 | libpass 1.9 (maintained fork, same import) |
+| Packaging | Pipfile / requirements.txt | `pyproject.toml` + `uv.lock` |
+| TLS | whatever the platform allowed | one policy for 443/8883/5223, TLS 1.0+ by default, `BUMPER_TLS_MIN_VERSION` |
+| Docker | `python:3.7-alpine`, root, Docker Hub | `python:3.13-slim`, uid 10001, amd64+arm64 on GHCR |
+| CI | Travis, AppVeyor | GitHub Actions |
+
+Proof of behaviour preservation: the black-box harness (`tests/harness/`)
+recorded the legacy behaviour *before* any change. It passes unchanged
+against the legacy code (Python 3.9, legacy profile), against the port
+(3.12, 3.13, 3.14) and against the Docker image (amd64 and arm64), apart
+from the changes C-001 to C-007 below.
+
 ## Deliberate behaviour changes
 
 ### C-001
@@ -206,7 +226,58 @@ same as before (the `exact` subscriber in the golden).
 the unit tests, which had relied on the old matcher; recorded from the legacy
 code).
 
+## Deployment changes (Docker image, configuration)
+
+These do not change protocol behaviour and are not covered by goldens. The
+container smoke test (`scripts/docker-smoke.sh`) covers them.
+
+* **Base image:** `python:3.13-slim` (Debian) instead of `python:3.7-alpine`.
+  Multi-arch `linux/amd64` + `linux/arm64`, published to
+  `ghcr.io/<owner>/bumper` instead of Docker Hub.
+* **Non-root:** the process runs as `bumper` (uid/gid 10001); the old image ran
+  as root. Bind-mounted `data`/`certs` directories from the old image must be
+  `chown`ed (see docs/Docker.md). Port 443 works without root under default
+  networking (Docker >= 20.10). Under `network_mode: host` the entrypoint
+  stops with an explanation instead of silently not serving 443.
+* **Image defaults:** `BUMPER_LISTEN=0.0.0.0` (as the compose example always
+  set; needed for the `127.0.0.1` health check) and `LOG_TO_STDOUT=true`. The
+  old image listened on the container's IP and logged to `/bumper/logs`.
+* **Certificates:** the entrypoint generates them on first start with
+  `create_certs` built from source for the target architecture, never
+  overwrites an existing set, and tells the user to persist `/bumper/certs`.
+  The old image ran `bumper.create_certs()`, which picks a committed binary
+  (the 32-bit ARM one on aarch64), then restarted itself with `os.execv`.
+* **New:** `HEALTHCHECK`, `VOLUME /bumper/data /bumper/certs /bumper/logs`, and
+  env vars `BUMPER_TLS_MIN_VERSION` and `BUMPER_PORT_HTTPS/HTTP/MQTT/XMPP`
+  (documented in docs/Env_Var.md; defaults unchanged).
+* **Python requirement:** >= 3.12. The `bumper` console script
+  (`[project.scripts]`) is new; `python -m bumper` works as before.
+
 ## Remaining private-API touchpoints
+
+**`bumper/` accesses no underscore-prefixed attribute of any third-party
+library.** Legacy accessed hbmqtt's `Broker._sessions`,
+`MQTTClient._handler.writer` and `_connected_state`, aiohttp's
+`request._match_info`, asyncio's `Server._serving`, and injected a fake
+distribution into `pkg_resources`. All of those are gone. (Checked with a
+grep for `<name>._<attr>` on anything but `self`/`cls`.)
+
+What remains depends on **undocumented but public-named** amqtt details. It
+is kept in one place and pinned by tests, so an amqtt upgrade breaks loudly
+there:
+
+| what | where | pinned by |
+|---|---|---|
+| Shape of `Broker.sessions` (`client_id -> (Session, BrokerProtocolHandler)`), `Session.transitions`/`Broker.transitions` state names, `handler.session`/`handler.writer`, `MQTTClient.session` | `broker_sessions()`, `session_state()`, `broker_state()`, `client_is_connected()`, `close_session_connection()` in `bumper/mqttserver.py` | `tests/test_mqtt_compat.py` |
+| The `default` listener must have `bind: None`, or amqtt opens `0.0.0.0:1883` | `MQTTServer.__init__` | `test_broker_config_has_no_plain_listener` |
+| The TLS listener is an amqtt *external* listener served by `BumperBroker` through `Broker.external_connected()` and `amqtt.adapters.Stream{Reader,Writer}Adapter` (public, new in 0.12), because amqtt cannot take an `SSLContext` | `BumperBroker` in `bumper/mqttserver.py` | `tests/test_mqtt_compat.py` (start/stop/restart), harness TLS matrix |
+| Releasing sessions that amqtt 0.12 leaves `connected` after failed authentication (`Session.transitions.disconnect()`) | `release_sessions_of_connection()` | `test_failed_login_does_not_leave_a_connected_session`, harness `mqtt/file_auth_*` |
+| Plugin event names/kwargs (`on_broker_client_connected(*, client_id, client_session)` etc.) and the plugin logger name `amqtt.broker.plugins.BumperMQTTServer_Plugin` | `BumperMQTTServer_Plugin` | harness MQTT tests; `test_nofileauth_mqttserver` |
+
+Other: `BumperBroker` overrides the public `Broker.start()`/`shutdown()` and
+keeps its own state in `_bumper_*` attributes to avoid name clashes. The
+legacy `ConfServer.stop_server()` behaviour is unchanged (see F-04).
+
 
 ## Follow-ups (not done in this port)
 
@@ -269,4 +340,78 @@ process exits, which it normally does right after `shutdown()`. The unit tests
 clean the runners up themselves. Fix: `stop_server()` should call
 `cleanup()` on every runner in `self.runners`.
 
+### F-05 Certificates are valid for 2 years and are never renewed
+
+`create_certs` (and therefore the Docker entrypoint) issues the CA and the
+server certificate for 2 years. Nothing renews them, and the entrypoint only
+generates certificates when none exist, so after two years every device
+stops trusting Bumper until new certificates are made and installed
+everywhere. Options: a longer-lived CA with a short-lived server certificate
+re-signed automatically from it (devices keep trusting the CA), plus an expiry
+warning in the log and on the status page.
+
+### F-06 Bind failures of the web servers are silent
+
+`start()` starts the 443/8007 sites as background tasks without error
+handling, and Bumper sets the `asyncio` logger to CRITICAL+1. A port that
+cannot be bound (in use, privileged) is therefore never logged, and the
+health check (port 8007) does not notice a missing 443. The Docker
+entrypoint now catches the privileged-port case up front. The general fix is
+to await the sites in `start()` and log (or exit on) bind errors.
+
+### F-07 Security defaults kept from legacy (recorded by the harness)
+
+All unchanged on purpose, but worth a decision:
+
+* `bumper.use_auth` is `False`: app clients authenticate over MQTT and XMPP
+  with any auth code (`mqtt/app_client_connect`), and XMPP accepts any
+  credentials.
+* XMPP advertises STARTTLS as `<required/>` but accepts SASL PLAIN over plain
+  TCP (`xmpp/auth_without_starttls`).
+* TLS 1.0/1.1 at OpenSSL security level 0 by default (C-004), for old robots.
+  The per-connection TLS log line shows whether it is needed.
+* The certificate private keys in the certs volume are readable by the
+  container user; the CA key is only needed to issue certificates.
+
+### F-08 Other legacy quirks kept (see BASELINE.md for the full list)
+
+* `SetDeviceNick`/`AddOneDevice` for an unknown DID inserts a bot without a
+  DID, which breaks `GetGlobalDeviceList` until removed
+  (`http/13_unknown_bot_poisons_device_list`).
+* `LOG_TO_STDOUT` is enabled by any non-empty value, including `false`, and
+  log lines appear twice on stdout (a stream handler plus `basicConfig`).
+* `bumper.create_certs()` (non-Docker) still selects the 32-bit ARM binary on
+  aarch64.
+
+### F-09 Upstream reports and dependency watch
+
+* amqtt 0.12: a session is left `connected` after failed authentication
+  (worked around in `BumperBroker`, C-003). Worth reporting upstream.
+* libpass declares Python classifiers up to 3.13 and "Development Status ::
+  3 - Alpha"; it is checked on 3.14 by `tests/test_passwd.py`.
+* GitHub Actions are pinned by SHA; Dependabot (or Renovate) for actions,
+  `uv.lock` and the base images would keep them current.
+
 ## Needs real-device testing
+
+Nothing in this port was tested with a real robot or the current Ecovacs
+apps. The harness reproduces the legacy behaviour, but the following can
+only be confirmed with hardware:
+
+* **Which TLS versions old robots actually negotiate**, especially the XMPP
+  models, on 443, 8883 and 5223. Bumper now logs it per connection
+  (`TLS <service> connection from <ip>: <version> <cipher>`). If no robot uses
+  TLS < 1.2, the default could be tightened (C-004).
+* **Current Ecovacs app versions** (Ecovacs and Ecovacs Home, Android and iOS)
+  against the HTTP API, MQTT over 443 through the nginx SNI proxy, and the
+  auth flows. Also whether any app relies on the UTC-offset skew (F-01).
+* **Current robot firmware**, both MQTT ("eco-ng") and XMPP models.
+* **XMPP robots and apps after the bind/routing fix (C-005).** It reproduces
+  the Python 3.7 image byte for byte, but no XMPP robot was available here.
+  The STARTTLS race (F-03) should be checked with TLS 1.3 clients.
+* **MQTT clients with file auth** (e.g. Home Assistant integrations, `sucks`):
+  they now get CONNACK "not authorized" (C-002) and spec-compliant `+`
+  matching (C-007).
+* **Docker on users' hosts:** NAS/ARM boards (arm64 was only tested under
+  QEMU here), rootless Docker/podman, upgrades from the root image with
+  existing bind mounts, and `network_mode: host`.
