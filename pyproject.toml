@@ -54,3 +54,13 @@ testpaths = ["tests"]
 addopts = "--ignore=tests/harness -p no:cacheprovider"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# Warnings gate: a DeprecationWarning or PendingDeprecationWarning raised from
+# Bumper's own code fails the run. The module pattern is a regex matched at the
+# start of the module name, so it covers the bumper package and the top-level
+# bumper_* plugin modules. Third-party deprecations would be ignored below, one
+# line each with a reason; on Python 3.12-3.14 with the locked versions there
+# are none (CI additionally runs the suite with -W error::DeprecationWarning).
+filterwarnings = [
+    "error::DeprecationWarning:bumper",
+    "error::PendingDeprecationWarning:bumper",
+]

@@ -25,6 +25,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.environ.get("BUMPER_HARNESS_SRC") or os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, SRC)
 
+if os.environ.get("BUMPER_HARNESS_SERVER_WARNINGS") == "error":
+    # Warnings gate for the server process (modern code only; the legacy
+    # code base raises plenty of these): deprecations raised from Bumper's
+    # own modules (bumper.*, bumper_* plugins) become errors.
+    import warnings
+
+    warnings.filterwarnings("error", category=DeprecationWarning, module="bumper")
+    warnings.filterwarnings("error", category=PendingDeprecationWarning, module="bumper")
+
 import bumper  # noqa: E402  (must come after the sys.path tweak)
 
 PORT_GLOBALS = {

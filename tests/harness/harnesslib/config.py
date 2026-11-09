@@ -17,6 +17,10 @@ BUMPER_HARNESS_CA       CA certificate used to verify the server
 BUMPER_HARNESS_SRC      Bumper source tree to launch / import in ``local`` mode
                         (default: this repository). The legacy CI job points it
                         at a checkout of the pre-port commit.
+BUMPER_HARNESS_SERVER_WARNINGS
+                        ``error``: in ``local`` mode, the Bumper subprocess turns
+                        Deprecation/PendingDeprecationWarnings raised from
+                        Bumper's own modules into errors (modern code only).
 BUMPER_HARNESS_PYTHON   Interpreter used to launch Bumper in ``local`` mode
                         (default: the interpreter running pytest).
 BUMPER_HARNESS_PROFILE  ``modern`` (default) or ``legacy``. Selects which

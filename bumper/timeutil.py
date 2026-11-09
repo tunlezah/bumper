@@ -5,10 +5,11 @@ from datetime import datetime, timezone
 
 
 def utcnow_naive():
-    """Exact replacement for the deprecated ``datetime.utcnow()``.
+    """Exact replacement for the deprecated ``utcnow()`` classmethod of
+    ``datetime``.
 
     Returns a *naive* datetime holding the current UTC wall-clock time, i.e.
-    the same value ``utcnow()`` returned, so replacing it changes nothing.
+    the same value it returned, so replacing it changes nothing.
 
     Beware: calling ``.timestamp()`` on the result interprets it as *local*
     time, so the value is off by the server's UTC offset whenever TZ is not
