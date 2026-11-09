@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 import bumper
 import asyncio
 import pytest
@@ -10,7 +10,7 @@ import pytest_asyncio
 import datetime, time
 from aiohttp import web
 import logging
-from testfixtures import LogCapture
+import ssl
 from unittest.mock import MagicMock
 
 
@@ -18,7 +18,7 @@ def create_confserver():
     return bumper.ConfServer("127.0.0.1:11111", False)
 
 
-def create_app(loop):
+def create_app():
     confserver = bumper.ConfServer("127.0.0.1:11111", False)
     confserver.confserver_app()
     return confserver.app
@@ -31,45 +31,70 @@ def async_return(result):
 
 
 def remove_existing_db():
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    # Start from an empty database (the per-test file from conftest.py)
+    if bumper.db and os.path.exists(bumper.db):
+        os.remove(bumper.db)
 
 
-async def test_confserver_ssl():
-    conf_server = bumper.ConfServer(("127.0.0.1", 111111), usessl=True)
+async def test_confserver_ssl(free_port):
+    port = free_port()
+    conf_server = bumper.ConfServer(("127.0.0.1", port), usessl=True)
     conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_server())
+    await conf_server.start_server()
+    try:
+        # The TLS listener answers with Bumper's certificate
+        ctx = ssl.create_default_context(cafile=bumper.ca_cert)
+        ctx.check_hostname = False
+        reader, writer = await asyncio.open_connection("127.0.0.1", port, ssl=ctx)
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await conf_server.stop_server()
+        # stop_server() (legacy) only shuts the runner down; cleanup() also
+        # closes the listening socket
+        await conf_server.runner.cleanup()
 
-async def test_confserver_exceptions():
-    with LogCapture() as l:
 
-            conf_server = bumper.ConfServer(("127.0.0.1", 8007), usessl=True)
-            conf_server.confserver_app()        
-            conf_server.site = web.TCPSite
+async def test_confserver_exceptions(log_capture, free_port):
+    with log_capture() as l:
 
-            #bind permission       
-            conf_server.site.start = mock.Mock(side_effect=OSError(1, "error while attempting to bind on address ('127.0.0.1', 8007): permission denied"))
-            await conf_server.start_server()
+            conf_server = bumper.ConfServer(("127.0.0.1", free_port()), usessl=True)
+            conf_server.confserver_app()
+
+            #bind permission
+            with mock.patch.object(web.TCPSite, "start", side_effect=OSError(1, "error while attempting to bind on address ('127.0.0.1', 8007): permission denied")):
+                await conf_server.start_server()
 
             #asyncio Cancel
-            conf_server.site = web.TCPSite
-            conf_server.site.start = mock.Mock(side_effect=asyncio.CancelledError)
-            await conf_server.start_server()
+            with mock.patch.object(web.TCPSite, "start", side_effect=asyncio.CancelledError):
+                await conf_server.start_server()
 
             #general exception
-            conf_server.site = web.TCPSite
-            conf_server.site.start = mock.Mock(side_effect=Exception(1, "general"))
-            await conf_server.start_server()
-    
+            with mock.patch.object(web.TCPSite, "start", side_effect=Exception(1, "general")):
+                await conf_server.start_server()
+
+            # the error paths schedule bumper.shutdown(); let it finish
+            await asyncio.gather(*bumper.tasks.pending())
+
     l.check_present(
         ("confserver", "ERROR", "error while attempting to bind on address ('127.0.0.1', 8007): permission denied")
     )
 
 
-async def test_confserver_no_ssl():
-    conf_server = bumper.ConfServer(("127.0.0.1", 111111), usessl=False)
+async def test_confserver_no_ssl(free_port):
+    port = free_port()
+    conf_server = bumper.ConfServer(("127.0.0.1", port), usessl=False)
     conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_server())
+    await conf_server.start_server()
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await conf_server.stop_server()
+        # stop_server() (legacy) only shuts the runner down; cleanup() also
+        # closes the listening socket
+        await conf_server.runner.cleanup()
 
 
 def test_get_milli_time():
@@ -84,63 +109,48 @@ def test_get_milli_time():
     )
 
 
-async def test_base(aiohttp_client):
-    remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    
-    # Start MQTT
-    mqtt_address = ("127.0.0.1", 8883)    
+async def start_mqtt_xmpp_helperbot(free_port):
+    mqtt_address = ("127.0.0.1", free_port())
     mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
     bumper.mqtt_server = mqtt_server
     await mqtt_server.broker_coro()
 
-    # Start XMPP
-    xmpp_address = ("127.0.0.1", 5223)
-    xmpp_server = bumper.XMPPServer(xmpp_address)
+    xmpp_server = bumper.XMPPServer(("127.0.0.1", free_port()))
     bumper.xmpp_server = xmpp_server
     await xmpp_server.start_async_server()
-    
-    # Start Helperbot
+
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
     bumper.mqtt_helperbot = mqtt_helperbot
     await mqtt_helperbot.start_helper_bot()
+    return mqtt_server, xmpp_server, mqtt_helperbot
 
-    client = await aiohttp_client(create_app)
+
+async def test_base(aiohttp_client, free_port):
+    remove_existing_db()
+    mqtt_server, xmpp_server, mqtt_helperbot = await start_mqtt_xmpp_helperbot(free_port)
+
+    client = await aiohttp_client(create_app())
     resp = await client.get("/")
     assert resp.status == 200   
 
-    mqtt_helperbot.Client.disconnect()
+    await mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
 
     bumper.xmpp_server.disconnect()
 
+    await asyncio.gather(bumper.xmpp_server.server_coro, return_exceptions=True)  # let serve_forever close the socket
 
-async def test_restartService(aiohttp_client):
+
+async def test_restartService(aiohttp_client, free_port):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    
-    # Start MQTT
-    mqtt_address = ("127.0.0.1", 8883)    
-    mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
-    bumper.mqtt_server = mqtt_server
-    await mqtt_server.broker_coro()
+    mqtt_server, xmpp_server, mqtt_helperbot = await start_mqtt_xmpp_helperbot(free_port)
 
-    # Start XMPP
-    xmpp_address = ("127.0.0.1", 5223)
-    xmpp_server = bumper.XMPPServer(xmpp_address)
-    bumper.xmpp_server = xmpp_server
-    await xmpp_server.start_async_server()
-    
-    # Start Helperbot
-    mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
-    bumper.mqtt_helperbot = mqtt_helperbot
-    await mqtt_helperbot.start_helper_bot()
-
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     
     resp = await client.get("/restart_Helperbot")
     assert resp.status == 200   
+    helperbot_session = mqtt_helperbot.Client.session
 
     resp = await client.get("/restart_MQTTServer")
     assert resp.status == 200   
@@ -148,26 +158,40 @@ async def test_restartService(aiohttp_client):
     resp = await client.get("/restart_XMPPServer")
     assert resp.status == 200   
 
-    mqtt_helperbot.Client.disconnect()
+    # The MQTT restart stops the broker after 0.1 s, starts it after 1.5 s and
+    # restarts the helperbot after 5 s; wait for all of it.
+    for _ in range(150):
+        await asyncio.sleep(0.1)
+        if (
+            mqtt_helperbot.Client.session is not helperbot_session
+            and bumper.mqttserver.client_is_connected(mqtt_helperbot.Client)
+        ):
+            break
+    assert bumper.mqttserver.broker_state(mqtt_server.broker) == "started"
+    assert mqtt_helperbot.Client.session is not helperbot_session
+    assert bumper.mqttserver.client_is_connected(mqtt_helperbot.Client)
+
+    await mqtt_helperbot.Client.disconnect()
     await mqtt_server.broker.shutdown()
 
     xmpp_server.disconnect()
 
+    await asyncio.gather(xmpp_server.server_coro, return_exceptions=True)  # let serve_forever close the socket
+
 async def test_RemoveBot(aiohttp_client):
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     resp = await client.get("/bot/remove/test_did")
     assert resp.status == 200  
 
 async def test_RemoveClient(aiohttp_client):
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     resp = await client.get("/client/remove/test_resource")
     assert resp.status == 200  
 
 
 async def test_login(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test without user
     resp = await client.get("/v1/private/us/en/dev_1234/ios/1/0/0/user/login")
@@ -180,7 +204,6 @@ async def test_login(aiohttp_client):
     assert "username" in jsonresp["data"]
 
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing 
 
     # Test global_e without user
     resp = await client.get("/v1/private/us/en/dev_1234/global_e/1/0/0/user/login")
@@ -236,8 +259,7 @@ async def test_login(aiohttp_client):
 
 async def test_logout(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Add a token to user and test
     bumper.user_add("testuser")
@@ -257,8 +279,7 @@ async def test_logout(aiohttp_client):
 
 async def test_checkLogin(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test without token
     resp = await client.get(
@@ -347,8 +368,7 @@ async def test_checkLogin(aiohttp_client):
 
 async def test_getAuthCode(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test without user or token
     resp = await client.get(
@@ -402,8 +422,7 @@ async def test_getAuthCode(aiohttp_client):
 
 async def test_checkAgreement(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get("/v1/private/us/en/dev_1234/ios/1/0/0/user/checkAgreement")
     assert resp.status == 200
@@ -423,8 +442,7 @@ async def test_checkAgreement(aiohttp_client):
 
 async def test_homePageAlert(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/ios/1/0/0/campaign/homePageAlert"
@@ -437,8 +455,7 @@ async def test_homePageAlert(aiohttp_client):
 
 async def test_checkVersion(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get("/v1/private/us/en/dev_1234/ios/1/0/0/common/checkVersion")
     assert resp.status == 200
@@ -449,8 +466,7 @@ async def test_checkVersion(aiohttp_client):
 
 async def test_checkAppVersion(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/common/checkAPPVersion"
@@ -463,8 +479,7 @@ async def test_checkAppVersion(aiohttp_client):
 
 async def test_uploadDeviceInfo(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/common/uploadDeviceInfo"
@@ -477,8 +492,7 @@ async def test_uploadDeviceInfo(aiohttp_client):
 
 async def test_getAdByPositionType(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/ad/getAdByPositionType"
@@ -491,8 +505,7 @@ async def test_getAdByPositionType(aiohttp_client):
 
 async def test_getBootScreen(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/ad/getBootScreen"
@@ -505,8 +518,7 @@ async def test_getBootScreen(aiohttp_client):
 
 async def test_hasUnreadMsg(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/message/hasUnreadMsg"
@@ -519,8 +531,7 @@ async def test_hasUnreadMsg(aiohttp_client):
 
 async def test_getMsgList(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/message/getMsgList"
@@ -533,8 +544,7 @@ async def test_getMsgList(aiohttp_client):
 
 async def test_getSystemReminder(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/common/getSystemReminder"
@@ -547,8 +557,7 @@ async def test_getSystemReminder(aiohttp_client):
 
 async def test_getCnWapShopConfig(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/shop/getCnWapShopConfig"
@@ -561,8 +570,7 @@ async def test_getCnWapShopConfig(aiohttp_client):
 
 async def test_neng_hasUnreadMessage(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     postbody = {
         "auth": {
@@ -583,8 +591,7 @@ async def test_neng_hasUnreadMessage(aiohttp_client):
 
 async def test_getProductIotMap(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.post("/api/pim/product/getProductIotMap")
     assert resp.status == 200
@@ -600,8 +607,7 @@ async def test_getProductIotMap(aiohttp_client):
 
 async def test_getUsersAPI(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get("/api/users/user.do")
     assert resp.status == 200
@@ -612,7 +618,6 @@ async def test_getUsersAPI(aiohttp_client):
 
 async def test_getUserAccountInfo(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.user_add("testuser")
     bumper.user_add_device("testuser", "dev_1234")
     bumper.user_add_token("testuser", "token_1234")
@@ -620,7 +625,7 @@ async def test_getUserAccountInfo(aiohttp_client):
     bumper.user_add_bot("testuser", "did_1234")
     bumper.bot_add("sn_1234", "did_1234", "class_1234", "res_1234", "com_1234")
 
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     resp = await client.get(
         "/v1/private/us/en/dev_1234/global_e/1/0/0/user/getUserAccountInfo"
@@ -635,8 +640,7 @@ async def test_getUserAccountInfo(aiohttp_client):
 
 async def test_postUsersAPI(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test FindBest
     postbody = {"todo": "FindBest", "service": "EcoMsgNew"}
@@ -786,8 +790,7 @@ async def test_postUsersAPI(aiohttp_client):
 
 async def test_appsvr_api(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test GetGlobalDeviceList
     postbody = {
@@ -825,11 +828,10 @@ async def test_appsvr_api(aiohttp_client):
 
 async def test_lg_logs(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.bot_add("sn_1234", "did_1234", "ls1ok3", "res_1234", "eco-ng")
     bumper.bot_set_mqtt("did_1234", True)
     confserver = create_confserver()
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     bumper.mqtt_helperbot = bumper.mqttserver.MQTTHelperBot("127.0.0.1")
 
     # Test return get status
@@ -864,8 +866,7 @@ async def test_lg_logs(aiohttp_client):
 
 async def test_postLookup(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
 
     # Test FindBest
     postbody = {"todo": "FindBest", "service": "EcoMsgNew"}
@@ -886,9 +887,8 @@ async def test_postLookup(aiohttp_client):
 
 async def test_devmgr(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     confserver = create_confserver()
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     bumper.mqtt_helperbot = bumper.mqttserver.MQTTHelperBot("127.0.0.1")
 
     # Test PollSCResult
@@ -942,9 +942,8 @@ async def test_devmgr(aiohttp_client):
 
 async def test_dim_devmanager(aiohttp_client):
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     confserver = create_confserver()
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     bumper.mqtt_helperbot = bumper.mqttserver.MQTTHelperBot("127.0.0.1")
 
     # Test PollSCResult

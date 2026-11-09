@@ -18,6 +18,7 @@ tests/*
 !tests/passwd
 !tests/passwd_bad
 !tests/harness/
+!tests/conftest.py
 
 # Local virtualenvs (legacy baseline + modern)
 .venv*/

@@ -239,4 +239,34 @@ port, the over-matching `+` (C-007) made this worse (every bot broadcast was
 queued as well). The fix is to drop the subscriptions, or drain the queue.
 This changes broker-visible subscriptions, so it belongs in its own change.
 
+### F-03 XMPP STARTTLS race: early client data is answered in plaintext
+
+`XMPPAsyncClient._handle_starttls()` awaits `loop.start_tls()` and only then
+calls `protocol.connection_made(new_transport)`. If the client's first data
+after the handshake (the new `<stream:stream>` header) arrives in the same read
+as its TLS 1.3 `Finished` message, asyncio's SSL protocol decrypts it and
+calls `data_received()` before the task resumes. Bumper then answers over the
+**old, plaintext** transport inside the TLS session, and the client fails with
+a record-layer error.
+
+This is unchanged legacy behaviour (same code, and the 2021 image's OpenSSL
+1.1.1 already offered TLS 1.3). It showed up deterministically while porting
+`test_xmpp_server_client_tls`, where client and server share one event loop.
+The harness clients run in another process and don't hit it. Real clients
+could, on a fast LAN with TLS 1.3. Fix: queue outgoing stanzas while the
+upgrade is pending and flush them once `connection_made()` has the new
+transport. It needs a harness case that sends `Finished` and the stream header
+in one segment (MemoryBIO) and should be checked against real XMPP robots and
+apps.
+
+### F-04 `shutdown()` does not stop the web servers
+
+`start()` serves 443 and 8007 through `ConfServer.start_site()`, which keeps
+its runners in `ConfServer.runners`. `shutdown()` calls
+`ConfServer.stop_server()`, which only knows `self.runner` (never set on this
+path) and logs an `AttributeError`. The listening sockets stay open until the
+process exits, which it normally does right after `shutdown()`. The unit tests
+clean the runners up themselves. Fix: `stop_server()` should call
+`cleanup()` on every runner in `self.runners`.
+
 ## Needs real-device testing

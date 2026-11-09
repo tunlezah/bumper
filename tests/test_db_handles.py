@@ -1,6 +1,8 @@
 """bumper.db keeps one TinyDB open instead of leaking a handle per call."""
 
+import gc
 import os
+import warnings
 
 import pytest
 
@@ -8,10 +10,6 @@ import bumper
 # Not "from bumper import db": bumper.db is the legacy DB *path* override
 # global, which shadows the submodule as an attribute.
 from bumper.db import db_close, db_get
-
-
-def open_fds():
-    return len(os.listdir("/proc/self/fd"))
 
 
 @pytest.fixture
@@ -22,16 +20,23 @@ def tmp_db(monkeypatch, tmp_path):
     db_close()
 
 
-@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="needs /proc/self/fd")
-def test_no_file_handle_leak(tmp_db):
+def test_no_unclosed_file_handles(tmp_db):
+    """The legacy db_get() opened a TinyDB per call and never closed it.
+    CPython closes such handles when they are garbage-collected, so the
+    descriptor count does not grow, but every one of them raises an
+    "unclosed file" ResourceWarning (~3 per iteration below with the legacy
+    code; none with the shared instance)."""
     bumper.user_add("someone")
-    before = open_fds()
-    for i in range(200):
-        bumper.bot_add("sn_{}".format(i), "did_{}".format(i), "ls1ok3", "wC3g", "eco-ng")
-        bumper.bot_get("did_{}".format(i))
-        bumper.user_add_token("someone", "token_{}".format(i))
-    assert open_fds() == before
-    assert len(db_get().table("bots").all()) == 200
+    gc.collect()  # leftovers of earlier tests must not be counted here
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
+        for i in range(50):
+            bumper.bot_add("sn_{}".format(i), "did_{}".format(i), "ls1ok3", "wC3g", "eco-ng")
+            bumper.bot_get("did_{}".format(i))
+            bumper.user_add_token("someone", "token_{}".format(i))
+        gc.collect()
+    assert [str(w.message) for w in caught if issubclass(w.category, ResourceWarning)] == []
+    assert len(db_get().table("bots").all()) == 50
 
 
 def test_one_shared_instance(tmp_db):
