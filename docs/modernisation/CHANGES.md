@@ -159,6 +159,29 @@ image would lose XMPP support with the upgrade.
 *Goldens:* `xmpp/app_client_session`, `xmpp/bot_and_app_routing`,
 `mqtt/helperbot_round_trips` (the `lg_logs` part).
 
+### C-006
+
+**Log files are written to `logs_dir` (`BUMPER_LOGS`) instead of `./logs`.**
+
+*Legacy:* `logs_dir` (from `BUMPER_LOGS`, default `<bumper_dir>/logs`) was
+computed and created, but the rotating file handlers opened the relative path
+`logs/<name>.log`. So `BUMPER_LOGS` had no effect, and starting Bumper from
+another directory either wrote logs there or crashed at import if that
+directory had no `logs/`.
+
+*Now:* the handlers use `os.path.join(logs_dir, ...)`. The location is the
+same as before whenever Bumper is started from its own directory (the
+repository root, or `WORKDIR /bumper` in the Docker image). With
+`LOG_TO_STDOUT` set nothing is written to files, as before.
+
+*Why:* requested as part of the port. `BUMPER_LOGS` is documented in
+`docs/Env_Var.md` and should work. No golden impact (the harness logs to
+stdout); covered by `tests/test_config.py`.
+
+New in the same commit, without changing defaults: `BUMPER_PORT_HTTPS`,
+`BUMPER_PORT_HTTP`, `BUMPER_PORT_MQTT`, `BUMPER_PORT_XMPP` (defaults 443,
+8007, 8883, 5223). Bots are still told that XMPP is on 5223.
+
 ## Remaining private-API touchpoints
 
 ## Follow-ups (not done in this port)

@@ -87,7 +87,7 @@ logformat = logging.Formatter(
 
 bumperlog = logging.getLogger("bumper")
 if not log_to_stdout:
-    bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
+    bumper_rotate = RotatingFileHandler(os.path.join(logs_dir, "bumper.log"), maxBytes=5000000, backupCount=5)
     bumper_rotate.setFormatter(logformat)
     bumperlog.addHandler(bumper_rotate)
 else: 
@@ -98,7 +98,7 @@ else:
 confserverlog = logging.getLogger("confserver")
 if not log_to_stdout:
     conf_rotate = RotatingFileHandler(
-        "logs/confserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "confserver.log"), maxBytes=5000000, backupCount=5
     )
     conf_rotate.setFormatter(logformat)
     confserverlog.addHandler(conf_rotate)
@@ -110,7 +110,7 @@ else:
 mqttserverlog = logging.getLogger("mqttserver")
 if not log_to_stdout:
     mqtt_rotate = RotatingFileHandler(
-        "logs/mqttserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "mqttserver.log"), maxBytes=5000000, backupCount=5
     )
     mqtt_rotate.setFormatter(logformat)
     mqttserverlog.addHandler(mqtt_rotate)
@@ -152,7 +152,7 @@ else:
 helperbotlog = logging.getLogger("helperbot")
 if not log_to_stdout:
     helperbot_rotate = RotatingFileHandler(
-        "logs/helperbot.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "helperbot.log"), maxBytes=5000000, backupCount=5
     )
     helperbot_rotate.setFormatter(logformat)
     helperbotlog.addHandler(helperbot_rotate)
@@ -164,7 +164,7 @@ else:
 boterrorlog = logging.getLogger("boterror")
 if not log_to_stdout:
     boterrorlog_rotate = RotatingFileHandler(
-        "logs/boterror.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "boterror.log"), maxBytes=5000000, backupCount=5
     )
     boterrorlog_rotate.setFormatter(logformat)
     boterrorlog.addHandler(boterrorlog_rotate)
@@ -176,7 +176,7 @@ else:
 xmppserverlog = logging.getLogger("xmppserver")
 if not log_to_stdout:
     xmpp_rotate = RotatingFileHandler(
-        "logs/xmppserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "xmppserver.log"), maxBytes=5000000, backupCount=5
     )
     xmpp_rotate.setFormatter(logformat)
     xmppserverlog.addHandler(xmpp_rotate)
@@ -188,10 +188,27 @@ else:
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 
-mqtt_listen_port = 8883
-conf1_listen_port = 443
-conf2_listen_port = 8007
-xmpp_listen_port = 5223
+def port_from_env(name, default):
+    value = os.environ.get(name)
+    if not value:
+        return default
+    try:
+        port = int(value)
+    except ValueError:
+        port = -1
+    if not 0 < port < 65536:
+        raise ValueError("{} must be a TCP port number, not {!r}".format(name, value))
+    return port
+
+
+# Listen ports. start() reads these module globals, so they can also be set
+# programmatically before main() (the characterisation harness does that).
+# Bots are always told XMPP is on port 5223 (lookup.do / users.do FindBest),
+# whatever BUMPER_PORT_XMPP says.
+mqtt_listen_port = port_from_env("BUMPER_PORT_MQTT", 8883)
+conf1_listen_port = port_from_env("BUMPER_PORT_HTTPS", 443)
+conf2_listen_port = port_from_env("BUMPER_PORT_HTTP", 8007)
+xmpp_listen_port = port_from_env("BUMPER_PORT_XMPP", 5223)
 
 
 async def start():
