@@ -40,6 +40,26 @@ if [ ! -f "$CA" ] || [ ! -f "$CERT" ] || [ ! -f "$KEY" ]; then
 EOF
 fi
 
+# Without root, ports below ip_unprivileged_port_start cannot be bound. Docker
+# >= 20.10 sets it to 0 inside a container's own network namespace, but with
+# network_mode: host the host's value applies (usually 1024), and Bumper would
+# then fail to serve 443 without logging anything.
+# (BUMPER_SKIP_PORT_CHECK=1 for images that grant the interpreter
+# CAP_NET_BIND_SERVICE as a file capability, see docs/Docker.md.)
+if [ "$(id -u)" != 0 ] && [ "${BUMPER_SKIP_PORT_CHECK:-0}" != 1 ] && [ -r /proc/sys/net/ipv4/ip_unprivileged_port_start ]; then
+    unpriv=$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start)
+    for var in BUMPER_PORT_HTTPS:443 BUMPER_PORT_HTTP:8007 BUMPER_PORT_MQTT:8883 BUMPER_PORT_XMPP:5223; do
+        name=${var%%:*}
+        eval "port=\${$name:-${var#*:}}"
+        if [ "$port" -lt "$unpriv" ]; then
+            log "ERROR: running as uid $(id -u), which cannot bind port $port ($name): ports below $unpriv are privileged here."
+            log "ERROR: this happens with network_mode: host. Either set $name to a port >= $unpriv and"
+            log "ERROR: forward $port to it, or run the container as root (user: \"0:0\"). See docs/Docker.md."
+            exit 1
+        fi
+    done
+fi
+
 if [ -z "${BUMPER_ANNOUNCE_IP:-}" ]; then
     log "WARNING: BUMPER_ANNOUNCE_IP is not set; bots will be told to connect to ${BUMPER_LISTEN:-<listen address>}."
     log "WARNING: set it to the IP address of the Docker host that robots can reach."
