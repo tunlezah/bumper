@@ -2,7 +2,7 @@
 
 - An Ecovacs wifi-enabled robot
 - A computer on your local network to run the Bumper server
-- Python 3.7 and pipenv OR Docker
+- Python 3.12 or newer (with [uv](https://docs.astral.sh/uv/)) OR Docker
 - A network router that has functionality for overriding DNS queries
 - A client that can connect to Bumper and talk to the robot over the Ecovacs protocol.
   - The "Ecovacs" or "Ecovacs Home" Android or iOS apps can be used if configured properly. 
@@ -19,7 +19,7 @@
 
  - Docker - [See Docker Details](Docker.md)
  - Manual/Python
- 	- Download bumper then run `pipenv install` to install dependencies
+ 	- Download bumper then run `uv sync --no-dev` to install the locked dependencies
 	- Start bumper - see the [Starting Bumper](#starting-bumper) section.
 
   - Control your robots like normal
@@ -32,7 +32,7 @@ Bumper requires certificates to function.  If certificates aren't found it will 
 
 For more information on generating certificates manually, see the [Creating Certs](Create_Certs.md) doc
 
-- Start Bumper with `pipenv run python -m bumper`
+- Start Bumper with `uv run python -m bumper` (or `uv run bumper`)
   - If prompted to generate certificates choose yes or no
 
 - Reboot your robot

@@ -16,17 +16,24 @@ Jinja2 2.10.3, ...) plus `setuptools<70` (hbmqtt needs `pkg_resources`).
 | `.venv-legacy-unit` | `pytest==6.2.5 pytest-aiohttp==0.3.0 pytest-asyncio==0.14.0 pytest-env mock testfixtures` | the existing unit suite in `tests/` |
 | `.venv-legacy-harness` | `pytest>=8.3,<8.4 paho-mqtt>=2.1,<3` | the black-box harness in `tests/harness/` |
 
-Recreate them with:
+Recreate them with (`requirements.txt` was removed after the port, so it is
+taken from the pre-port commit):
 
 ```bash
+git show df36bdd:requirements.txt > /tmp/legacy-requirements.txt
 uv python install 3.9
 uv venv -p 3.9 .venv-legacy-unit
-uv pip install -p .venv-legacy-unit/bin/python -r requirements.txt "setuptools<70" \
+uv pip install -p .venv-legacy-unit/bin/python -r /tmp/legacy-requirements.txt "setuptools<70" \
     pytest==6.2.5 pytest-aiohttp==0.3.0 pytest-asyncio==0.14.0 pytest-env mock testfixtures
 uv venv -p 3.9 .venv-legacy-harness
-uv pip install -p .venv-legacy-harness/bin/python -r requirements.txt "setuptools<70" \
+uv pip install -p .venv-legacy-harness/bin/python -r /tmp/legacy-requirements.txt "setuptools<70" \
     "pytest>=8.3,<8.4" "paho-mqtt>=2.1,<3"
 ```
+
+The legacy *unit* suite has to run from a checkout of the pre-port commit
+(the unit tests have been ported since). The harness runs against the
+legacy code from any checkout via `BUMPER_HARNESS_SRC` (see
+`tests/harness/README.md` and the `legacy-harness` CI job).
 
 ## Existing unit suite (`.venv-legacy-unit`, Python 3.9.25)
 
