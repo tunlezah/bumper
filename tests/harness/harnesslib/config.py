@@ -22,6 +22,8 @@ BUMPER_HARNESS_PYTHON   Interpreter used to launch Bumper in ``local`` mode
 BUMPER_HARNESS_PROFILE  ``modern`` (default) or ``legacy``. Selects which
                         expectation applies to entries that have a deliberate,
                         documented behaviour change (see golden.py).
+BUMPER_HARNESS_GOLDEN_DIR
+                        Use another golden directory (default ``golden/``).
 BUMPER_HARNESS_RECORD   ``1``: (re)write ``golden/`` from the observed
                         behaviour. Only allowed with PROFILE=legacy, so goldens
                         can only ever come from the legacy code base.
@@ -34,7 +36,9 @@ import os
 HARNESS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.abspath(os.path.join(HARNESS_DIR, "..", ".."))
 TEST_CERTS_DIR = os.path.join(REPO_DIR, "tests", "test_certs")
-GOLDEN_DIR = os.path.join(HARNESS_DIR, "golden")
+# BUMPER_HARNESS_GOLDEN_DIR redirects recording/comparison to another
+# directory (used by golden_reference/record_legacy_image.sh).
+GOLDEN_DIR = os.environ.get("BUMPER_HARNESS_GOLDEN_DIR") or os.path.join(HARNESS_DIR, "golden")
 CHANGES_DIR = os.path.join(HARNESS_DIR, "golden_changes")
 
 TARGET = os.environ.get("BUMPER_HARNESS_TARGET", "local").strip().lower() or "local"

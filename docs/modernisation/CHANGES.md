@@ -119,6 +119,46 @@ transcripts).
 
 *Golden:* `tls_matrix`.
 
+### C-005
+
+**XMPP resource bind, XMPP routing and `/api/lg/log.do` work again, byte-for-byte as on Python 3.7 (bug fix: `Element.getchildren()`, attribute order).**
+
+*Legacy:* `xml.etree.ElementTree.Element.getchildren()` was removed in Python
+3.9. The legacy code calls it in three places, so on Python >= 3.9 (where the
+goldens were recorded):
+
+* XMPP `_handle_bind` raises: the bind `iq` gets no answer, the connection's
+  JID stays empty, presence and pings go to `to=""`, and **no stanza is ever
+  routed between an app and an XMPP bot**;
+* XMPP `_handle_result` raises on `errno='103'`, so Bumper never adds the user
+  to a bot last owned by the Ecovacs cloud;
+* `/api/lg/log.do` (clean logs) answers `{"ret": "fail", "errno": "0001"}` even
+  when the bot answers.
+
+The legacy Docker image (Python 3.7) did not have this problem. See
+BASELINE.md: the unit test `test_lg_logs` fails on 3.9 for this reason.
+
+A second, smaller Python change affects the same forwarding paths. Python
+3.7 serialised XML attributes in alphabetical order; 3.8+ keeps document
+order (bpo-34160), which would move the `from` attribute Bumper adds to the
+end of every forwarded stanza. The XMPP unit tests written for 3.7 assert the
+sorted form.
+
+*Now:* `list(element)`, which is exactly what `getchildren()` returned, and
+the three forwarding serialisations (`_handle_ctl`, `_handle_ping`,
+`_handle_result`) use `tostring_py37()`, which sorts attributes first. Debug
+log output is not affected. With both, the modern code behaves **exactly** as
+the unmodified legacy code did on Python 3.7: `tests/harness/golden_reference/py37/` was recorded from the
+legacy image (reproducible with `record_legacy_image.sh` there), and the
+override validator requires every C-005 difference to equal that recording.
+
+*Why a fix and not a follow-up:* without it XMPP robots cannot be controlled
+at all on any supported Python version. Users moving from the 3.7-based
+image would lose XMPP support with the upgrade.
+
+*Goldens:* `xmpp/app_client_session`, `xmpp/bot_and_app_routing`,
+`mqtt/helperbot_round_trips` (the `lg_logs` part).
+
 ## Remaining private-API touchpoints
 
 ## Follow-ups (not done in this port)

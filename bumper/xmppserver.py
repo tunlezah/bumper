@@ -14,6 +14,23 @@ xmppserverlog = logging.getLogger("xmppserver")
 boterrorlog = logging.getLogger("boterror")
 
 
+def tostring_py37(element):
+    """ET.tostring() with every element's attributes in alphabetical order.
+
+    Python 3.7, which the legacy Docker image ran, serialised attributes
+    sorted; Python >= 3.8 keeps document order (bpo-34160), which would move
+    the "from" attribute Bumper adds to the end of every forwarded stanza.
+    Robots and apps have only ever seen the sorted form, so the forwarding
+    paths keep it (see docs/modernisation/CHANGES.md, C-005).
+    """
+    for elem in element.iter():
+        if len(elem.attrib) > 1:
+            items = sorted(elem.attrib.items())
+            elem.attrib.clear()
+            elem.attrib.update(items)
+    return ET.tostring(element)
+
+
 class XMPPServer:
     server_id = "ecouser.net"
     clients = []
@@ -244,7 +261,7 @@ class XMPPAsyncClient:
                     ctl_to = xml.get("to")
                     if not "from" in xml.attrib:
                         xml.attrib["from"] = "{}".format(self.bumper_jid)
-                    rxmlstring = ET.tostring(xml).decode("utf-8")
+                    rxmlstring = tostring_py37(xml).decode("utf-8")
                     # clean up string to remove namespaces added by ET
                     rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                     rxmlstring = rxmlstring.replace("ns0:", "")
@@ -276,7 +293,7 @@ class XMPPAsyncClient:
                 pingfrom = self.bumper_jid
                 if not "from" in xml.attrib:
                     xml.attrib["from"] = "{}".format(pingfrom)
-                pingstring = ET.tostring(xml).decode("utf-8")
+                pingstring = tostring_py37(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
                 pingstring = pingstring.replace("ns0:", "")
@@ -315,8 +332,8 @@ class XMPPAsyncClient:
             ):  # No permissions, usually if bot was last on Ecovac network, Bumper will try to add fuid user as owner
                 if self.type == self.BOT:
                     xmppserverlog.info("Bot reported user has no permissions, Bumper will attempt to add user to bot. This is typical if bot was last on Ecovacs Network.")
-                    xquery = xml.getchildren()
-                    ctl = xquery[0].getchildren()
+                    xquery = list(xml)
+                    ctl = list(xquery[0])
                     if "error" in ctl[0].attrib:
                         ctlerr = ctl[0].attrib["error"]
                         adminuser = ctlerr.replace("permission denied, please contact ", "")
@@ -353,7 +370,7 @@ class XMPPAsyncClient:
                         )
 
             else:
-                rxmlstring = ET.tostring(xml).decode("utf-8")
+                rxmlstring = tostring_py37(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                 rxmlstring = rxmlstring.replace("ns0:", "")
@@ -572,8 +589,8 @@ class XMPPAsyncClient:
             if client:
                 bumper.client_set_xmpp(client["resource"], True)
 
-            clientbindxml = xml.getchildren()
-            clientresourcexml = clientbindxml[0].getchildren()
+            clientbindxml = list(xml)
+            clientresourcexml = list(clientbindxml[0])
             if self.devclass:  # its a bot
                 self.name = "XMPP_Client_{}_{}".format(self.uid, self.devclass)
                 self.bumper_jid = "{}@{}.ecorobot.net/atom".format(
