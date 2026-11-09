@@ -1,5 +1,28 @@
-# Markdown
+# Only what the Dockerfile copies is needed: pyproject.toml, uv.lock, bumper/,
+# create_certs/src/create_certs.go, create_certs/Bumper_SAN.txt, docker/, LICENSE.txt
+.git
+.github
+.gitignore
+.dockerignore
+.venv*
+**/__pycache__
+**/*.pyc
+tests
+docs
+example
+scripts
+hooks
+.travis.yml
+appveyor.yml
+Pipfile
+Pipfile.lock
+requirements.txt
+mkdocs.yml
+conftest.py
 *.md
-
-# Other
-*.yml
+# committed prebuilt binaries for non-Docker users; the image builds its own
+create_certs/create_certs_*
+# local runtime state
+data
+certs
+logs
