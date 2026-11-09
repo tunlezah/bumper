@@ -9,8 +9,9 @@ import aiohttp_jinja2
 import jinja2
 from aiohttp import web
 
-from bumper import plugins
+from bumper import plugins, tls
 from bumper.models import *
+import weakref
 
 
 class aiohttp_filter(logging.Filter):
@@ -45,12 +46,14 @@ class ConfServer:
         self.runner = None
         self.runners = []
         self.excludelogging = ["base", "remove-bot", "remove-client", "restart-service"]
+        self._tls_logged = weakref.WeakSet()  # SSL objects of connections already logged
 
     def get_milli_time(self, timetoconvert):
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
         self.app = web.Application(middlewares=[
+            self.log_tls_connection,
             self.log_all_requests,
             ])
         aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.bumper_dir,"bumper","web","templates")))
@@ -108,8 +111,7 @@ class ConfServer:
         self.runners.append(runner)
         await runner.setup()
         if usessl:
-            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+            ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
             site = web.TCPSite(
                 runner,
                 host=address,
@@ -133,8 +135,7 @@ class ConfServer:
             await self.runner.setup()
 
             if self.usessl:
-                ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+                ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
                 self.site = web.TCPSite(
                     self.runner,
                     host=self.address[0],
@@ -207,6 +208,16 @@ class ConfServer:
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
+
+    @web.middleware
+    async def log_tls_connection(self, request, handler):
+        # Log the negotiated TLS version/cipher once per connection
+        transport = request.transport
+        ssl_object = transport.get_extra_info("ssl_object") if transport is not None else None
+        if ssl_object is not None and ssl_object not in self._tls_logged:
+            self._tls_logged.add(ssl_object)
+            tls.log_connection("HTTPS", transport.get_extra_info("peername"), ssl_object)
+        return await handler(request)
 
     @web.middleware
     async def log_all_requests(self, request, handler):

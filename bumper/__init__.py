@@ -3,6 +3,7 @@
 from bumper.confserver import ConfServer
 from bumper.mqttserver import MQTTServer, MQTTHelperBot, broker_state, client_is_connected
 from bumper.xmppserver import XMPPServer
+from bumper import tls
 from bumper.models import *
 from bumper.db import *
 import asyncio
@@ -222,6 +223,7 @@ async def start():
         return
 
     bumperlog.info("Starting Bumper")
+    bumperlog.info("TLS policy: {}".format(tls.describe_policy()))
     global mqtt_server
     mqtt_server = MQTTServer((bumper_listen, mqtt_listen_port))
     global mqtt_helperbot

@@ -1,0 +1,20 @@
+{
+  "changes": [
+    "C-004"
+  ],
+  "expected": {
+    "https TLSv1": "accepted",
+    "https TLSv1_1": "accepted",
+    "https TLSv1_2": "accepted",
+    "https TLSv1_3": "accepted",
+    "mqtt TLSv1": "accepted",
+    "mqtt TLSv1_1": "accepted",
+    "mqtt TLSv1_2": "accepted",
+    "mqtt TLSv1_3": "accepted",
+    "xmpp TLSv1": "accepted",
+    "xmpp TLSv1_1": "accepted",
+    "xmpp TLSv1_2": "accepted",
+    "xmpp TLSv1_3": "accepted"
+  },
+  "reason": "Shared TLS policy: TLS 1.0 and newer on every TLS endpoint (BUMPER_TLS_MIN_VERSION=TLSv1 default), as the 2021 image on OpenSSL 1.1.1 accepted."
+}

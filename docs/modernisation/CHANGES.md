@@ -86,6 +86,39 @@ show each device's `mqtt_connection` flag.
 bots disconnected), and the `status_rows` of `mqtt/file_auth_bad_password`,
 `mqtt/file_auth_unknown_user` and `mqtt/file_auth_anonymous` (refused clients).
 
+### C-004
+
+**TLS 1.0 and 1.1 are accepted again on all three TLS endpoints (443, 8883, 5223 after STARTTLS).**
+
+*Legacy:* the code accepted whatever the platform allowed. The 2021 Docker
+image (OpenSSL 1.1.1) accepted TLS 1.0–1.3. The same code on any OpenSSL 3
+platform (Python 3.9 in the legacy harness venv, or `python:3.7-alpine`
+rebuilt today) rejects TLS 1.0/1.1, and that is what the goldens recorded. See
+BASELINE.md for the measurements.
+
+*Now:* all three servers take their context from one factory,
+`bumper.tls.server_context()`. By default it accepts TLS 1.0 and newer
+(`minimum_version = TLSv1`, plus Python 3.9's server cipher string with
+`@SECLEVEL=0`, which OpenSSL 3 needs for TLS < 1.2). `BUMPER_TLS_MIN_VERSION`
+(`TLSv1`, `TLSv1_1`, `TLSv1_2`, `TLSv1_3`) tightens it. At `TLSv1_2` or
+above, Python's default ciphers and security level are kept. Every accepted
+TLS connection is logged at INFO (`bumper.tls` logger) with peer, version and
+cipher, and the effective policy is logged at startup.
+
+*Why:* this restores what users of the 2021 image had, so older robots
+(especially the XMPP models) that only speak TLS 1.0 are not dropped silently
+by the upgrade. Users who know their robots speak TLS 1.2 can tighten the
+policy. Whether real robots need TLS 1.0/1.1 is listed under *Needs
+real-device testing*. The per-connection log line is there to answer exactly
+that question.
+
+Unchanged per endpoint: the MQTT listener still asks for an *optional* client
+certificate (`CERT_OPTIONAL`, as hbmqtt/amqtt did), and HTTPS and XMPP don't
+ask for one. A modern client still negotiates TLS 1.3 (see the XMPP
+transcripts).
+
+*Golden:* `tls_matrix`.
+
 ## Remaining private-API touchpoints
 
 ## Follow-ups (not done in this port)

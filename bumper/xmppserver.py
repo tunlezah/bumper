@@ -5,8 +5,8 @@ import re
 import uuid
 import xml.etree.ElementTree as ET
 import base64
-import ssl
 import bumper
+from bumper import tls
 import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
@@ -488,12 +488,13 @@ class XMPPAsyncClient:
                 transport = self.transport
                 protocol = self.transport.get_protocol()
 
-                ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
-                ssl_ctx.load_verify_locations(cafile=bumper.ca_cert)
+                ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
 
                 new_transport = await loop.start_tls(
                     transport, protocol, ssl_ctx, server_side=True
+                )
+                tls.log_connection(
+                    "XMPP", new_transport.get_extra_info("peername"), new_transport.get_extra_info("ssl_object")
                 )
                 protocol.connection_made(new_transport)
 

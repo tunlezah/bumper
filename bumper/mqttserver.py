@@ -3,7 +3,6 @@
 import logging
 import asyncio
 import os
-import ssl
 from dataclasses import dataclass
 from typing import Optional
 from amqtt.adapters import StreamReaderAdapter, StreamWriterAdapter
@@ -14,6 +13,7 @@ from amqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 from amqtt.plugins.base import BaseAuthPlugin
 import time
 import bumper
+from bumper import tls
 import json
 from datetime import datetime, timedelta
 import bumper
@@ -306,11 +306,9 @@ class BumperBroker(Broker):
         self._bumper_tls_server = None
 
     def bumper_ssl_context(self):
-        # Same context the previous broker built for a listener with "ssl": "on"
-        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
-        ssl_ctx.verify_mode = ssl.CERT_OPTIONAL
-        return ssl_ctx
+        # Shared TLS policy; the MQTT listener always asked for an optional
+        # client certificate, so it still does.
+        return tls.server_context(bumper.server_cert, bumper.server_key, request_client_cert=True)
 
     async def start(self):
         try:
@@ -347,6 +345,7 @@ class BumperBroker(Broker):
             self._bumper_tls_server = None
 
     async def _bumper_tls_connected(self, reader, writer):
+        tls.log_connection("MQTT", writer.get_extra_info("peername"), writer.get_extra_info("ssl_object"))
         writer_adapter = StreamWriterAdapter(writer)
         try:
             await self.external_connected(StreamReaderAdapter(reader), writer_adapter, self._bumper_tls_listener)
