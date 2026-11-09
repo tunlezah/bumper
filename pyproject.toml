@@ -1,0 +1,56 @@
+[project]
+name = "bumper"
+version = "0.2.0.dev0"
+description = "Self-hosted replacement for the Ecovacs robot vacuum cloud"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE.txt"]
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+# Majors are pinned; uv.lock pins exact versions.
+dependencies = [
+    "aiohttp>=3.10,<4",
+    "aiohttp-jinja2>=1.6,<2",
+    "jinja2>=3.1,<4",
+    "amqtt>=0.12,<0.13",
+    "tinydb>=4.8,<5",
+    "passlib>=1.7.4,<1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/bmartin5692/bumper"
+
+[project.scripts]
+bumper = "bumper:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=1.0,<2",
+    "pytest-aiohttp>=1.1,<2",
+    "paho-mqtt>=2.1,<3",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# bumper/plugins/*.py are not a package (they are imported by putting the
+# directory on sys.path) and bumper/web/ holds templates and images; the
+# wheel ships the whole directory.
+packages = ["bumper"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The characterisation harness has its own pytest.ini and is run separately:
+#   uv run pytest tests/harness
+addopts = "--ignore=tests/harness -p no:cacheprovider"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
