@@ -50,7 +50,7 @@ class ConfServer:
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
+        self.app = web.Application(middlewares=[
             self.log_all_requests,
             ])
         aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.bumper_dir,"bumper","web","templates")))
@@ -211,7 +211,7 @@ class ConfServer:
     @web.middleware
     async def log_all_requests(self, request, handler):
 
-        if request._match_info.route.name not in self.excludelogging:
+        if request.match_info.route.name not in self.excludelogging:
             to_log = {
                 "request": {
                     "route_name": f"{request.match_info.route.name}",
@@ -256,15 +256,18 @@ class ConfServer:
                 
                 return response
 
-            except web.HTTPNotFound as notfound:
+            except web.HTTPNotFound:
                 confserverlog.debug("Request path {} not found".format(request.raw_path))
                 confserverlog.debug(json.dumps(to_log))
-                return notfound
+                raise  # aiohttp turns it into the same 404 response
 
             except Exception as e:
                 confserverlog.exception("{}".format(e))
                 confserverlog.error(json.dumps(to_log))
-                return e 
+                # HTTP exceptions (e.g. 405) become the same response as when
+                # returned; anything else is a 500, which is also what aiohttp
+                # makes of a returned non-response object.
+                raise
 
         else:
             return await handler(request)
@@ -284,13 +287,13 @@ class ConfServer:
                     await bumper.mqttserver.close_session_connection(handler)
 
             #await bumper.mqtt_server.broker.shutdown()
-            aloop = asyncio.get_event_loop()
+            aloop = asyncio.get_running_loop()
             aloop.call_later(
             0.1, lambda: asyncio.create_task(bumper.mqtt_server.broker.shutdown())
             )  # In .1 seconds shutdown broker
 
         
-        aloop = asyncio.get_event_loop()
+        aloop = asyncio.get_running_loop()
         aloop.call_later(
            1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
         )  # In 1.5 seconds start broker
@@ -307,7 +310,7 @@ class ConfServer:
                 return web.json_response({"status": "complete"})
             elif service == "MQTTServer":
                 asyncio.create_task(self.restart_MQTT())
-                aloop = asyncio.get_event_loop()
+                aloop = asyncio.get_running_loop()
                 aloop.call_later(
                     5, lambda: asyncio.create_task(self.restart_Helper())
                 )  # In 5 seconds restart Helperbot
@@ -786,7 +789,7 @@ class ConfServer:
                 confserverlog.exception("{}".format(e))     
 
 
-        def getUserAccountInfo(self, request):
+        async def getUserAccountInfo(self, request):
             try:
                 user_devid = request.match_info.get("devid", "")
                 countrycode = request.match_info.get("country", "us")

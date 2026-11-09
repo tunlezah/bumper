@@ -484,7 +484,7 @@ class XMPPAsyncClient:
                 )  # send process to client
 
                 # After proceed the connection should be upgraded to TLS
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 transport = self.transport
                 protocol = self.transport.get_protocol()
 

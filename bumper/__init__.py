@@ -194,10 +194,7 @@ xmpp_listen_port = 5223
 
 async def start():
 
-    try:
-        loop = asyncio.get_event_loop()
-    except:
-        loop = asyncio.new_event_loop()
+    loop = asyncio.get_running_loop()
 
     if bumper_debug:
         logging.basicConfig(
