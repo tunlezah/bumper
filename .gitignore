@@ -17,6 +17,10 @@ tests/*
 !tests/pytest.ini
 !tests/passwd
 !tests/passwd_bad
+!tests/harness/
+
+# Local virtualenvs (legacy baseline + modern)
+.venv*/
 
 # Ignore logs/data/certs
 logs/*
