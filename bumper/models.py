@@ -2,6 +2,7 @@
 import json
 import uuid
 from datetime import datetime, timedelta
+from bumper.timeutil import utcnow_naive
 
 import bumper
 
@@ -101,7 +102,7 @@ class OAuth:
         oauth = OAuth()
         oauth.userId = userId
         oauth.access_token = uuid.uuid4().hex
-        oauth.expire_at = "{}".format(datetime.utcnow() + timedelta(days=bumper.oauth_validity_days))
+        oauth.expire_at = "{}".format(utcnow_naive() + timedelta(days=bumper.oauth_validity_days))
         oauth.refresh_token = uuid.uuid4().hex
         return oauth
 

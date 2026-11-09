@@ -123,4 +123,21 @@ transcripts).
 
 ## Follow-ups (not done in this port)
 
+### F-01 API timestamps are off by the server's UTC offset
+
+`datetime.utcnow().timestamp()` interprets a naive *UTC* wall-clock time as
+*local* time, so the result is off by the server's UTC offset whenever `TZ`
+is not UTC (the compose example sets `TZ: Europe/Rome`, i.e. 1–2 hours). That
+affects `time` in every v1/v2 API envelope, `serverTime` (homePageAlert),
+`getTimestamp`, and the OAuth grant: `expire_at` is stored as naive UTC,
+returned as if it were local time, and `revoke_expired_oauths()` compares it
+with local `datetime.now()`, so grants expire one UTC offset early or late.
+
+The port keeps this exactly (`bumper.timeutil.utcnow_naive()` returns the same
+value `utcnow()` did; the harness pins `now-3h` with the server in UTC+3).
+Fixing it means `int(time.time() * 1000)` for the timestamps, and aware
+datetimes (or epoch seconds) for the OAuth expiry plus a migration for stored
+`expire_at` strings. It needs its own commit, a golden change (`now-3h` →
+`now+0h`) and a check that current Ecovacs apps don't depend on the skew.
+
 ## Needs real-device testing

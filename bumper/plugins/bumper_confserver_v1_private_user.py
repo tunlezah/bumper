@@ -5,6 +5,7 @@ from bumper import plugins
 import logging
 import bumper
 from bumper.models import *
+from bumper.timeutil import utcnow_naive
 from bumper import plugins
 from datetime import datetime, timedelta
 
@@ -63,14 +64,14 @@ class v1_private_user(plugins.ConfServerApp):
                     ],
                     "msg": "操作成功",
                     "success": True,
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
             else:
                 body = {
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": [],
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
             return web.json_response(body)
@@ -139,7 +140,7 @@ class v1_private_user(plugins.ConfServerApp):
                     ],
                     "msg": "操作成功",
                     "success": True,
-                    "time": self.get_milli_time(datetime.utcnow().timestamp())
+                    "time": self.get_milli_time(utcnow_naive().timestamp())
                     }
 
             return web.json_response(body)
@@ -156,7 +157,7 @@ class v1_private_user(plugins.ConfServerApp):
                 },
                 "msg": "操作成功",
                 "success": True,
-                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(utcnow_naive().timestamp()),
             }
 
             return web.json_response(body)
@@ -171,7 +172,7 @@ class v1_private_user(plugins.ConfServerApp):
                 "data": None,
                 "msg": "操作成功",
                 "success": True,
-                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(utcnow_naive().timestamp()),
             }
 
             return web.json_response(body)

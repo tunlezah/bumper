@@ -2,6 +2,7 @@
 import asyncio
 from aiohttp import web
 from bumper import plugins
+from bumper.timeutil import utcnow_naive
 import logging
 import bumper
 from bumper.models import *
@@ -38,10 +39,10 @@ class v1_private_campaign(plugins.ConfServerApp):
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "serverTime": self.get_milli_time(utcnow_naive().timestamp()),
                 },
                 "msg": "操作成功",
-                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(utcnow_naive().timestamp()),
             }
 
             return web.json_response(body)

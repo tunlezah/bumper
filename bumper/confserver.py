@@ -11,6 +11,7 @@ from aiohttp import web
 
 from bumper import plugins, tasks, tls
 from bumper.models import *
+from bumper.timeutil import utcnow_naive
 import weakref
 
 
@@ -412,7 +413,7 @@ class ConfServer:
                             #    "username": "fusername_{}".format(tmpuser["userid"]),
                             # },
                             "msg": "操作成功",
-                            "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                            "time": self.get_milli_time(utcnow_naive().timestamp()),
                         }
 
                         return web.json_response(body)
@@ -421,7 +422,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -590,7 +591,7 @@ class ConfServer:
                                     #    "username": "fusername_{}".format(tmpuser["userid"]),
                                     # },
                                     "msg": "操作成功",
-                                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                                 }
 
                                 return web.json_response(body)
@@ -599,7 +600,7 @@ class ConfServer:
                             "code": bumper.ERR_USER_NOT_ACTIVATED,
                             "data": None,
                             "msg": "当前密码错误",
-                            "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                            "time": self.get_milli_time(utcnow_naive().timestamp()),
                         }
 
                         return web.json_response(body)
@@ -648,7 +649,7 @@ class ConfServer:
                                     "msg": "操作成功",
                                     "success": True,
                                     "time": self.get_milli_time(
-                                        datetime.utcnow().timestamp()
+                                        utcnow_naive().timestamp()
                                     ),
                                 }
                             else:
@@ -660,7 +661,7 @@ class ConfServer:
                                     },
                                     "msg": "操作成功",
                                     "time": self.get_milli_time(
-                                        datetime.utcnow().timestamp()
+                                        utcnow_naive().timestamp()
                                     ),
                                 }
                             return web.json_response(body)
@@ -669,7 +670,7 @@ class ConfServer:
                     "code": bumper.ERR_TOKEN_INVALID,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -706,7 +707,7 @@ class ConfServer:
                         #    "username": "fusername_{}".format(tmpuser["userid"]),
                         # },
                         "msg": "操作成功",
-                        "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                        "time": self.get_milli_time(utcnow_naive().timestamp()),
                     }
                     return web.json_response(body)
 
@@ -715,7 +716,7 @@ class ConfServer:
                         "code": bumper.ERR_TOKEN_INVALID,
                         "data": None,
                         "msg": "当前密码错误",
-                        "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                        "time": self.get_milli_time(utcnow_naive().timestamp()),
                     }
                     return web.json_response(body)
 
@@ -791,7 +792,7 @@ class ConfServer:
                     #    "username": "fusername_{}".format(tmpuser["userid"]),
                     # },
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return body
@@ -833,7 +834,7 @@ class ConfServer:
                         "loginName": login_details.loginName,
                     },
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 # Example body
@@ -884,7 +885,7 @@ class ConfServer:
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": None,
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)
