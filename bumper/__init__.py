@@ -297,6 +297,7 @@ async def shutdown():
         bumperlog.info("Exception: {}".format(e))
 
     finally:
+        db_close()
         bumperlog.info("Shutdown complete")
 
 
