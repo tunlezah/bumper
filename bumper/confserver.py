@@ -172,16 +172,17 @@ class ConfServer:
 
             bots = bumper.db_get().table("bots").all()
             clients = bumper.db_get().table("clients").all()
-            helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
+            helperbot = bumper.mqttserver.session_state(bumper.mqtt_helperbot.Client.session)
             mqttserver = bumper.mqtt_server.broker
             xmppserver = bumper.xmpp_server
             mq_sessions = []
-            for sess in mqttserver._sessions:
+            broker_sessions = bumper.mqttserver.broker_sessions(mqttserver)
+            for client_id, session, handler in broker_sessions:
                 tmpsess = []
                 tmpsess.append({
-                    "username": mqttserver._sessions[sess][0].username,
-                    "client_id": mqttserver._sessions[sess][0].client_id,
-                    "state": mqttserver._sessions[sess][0].transitions.state,
+                    "username": session.username,
+                    "client_id": session.client_id,
+                    "state": bumper.mqttserver.session_state(session),
                 })
                
                 mq_sessions.append(tmpsess)
@@ -190,10 +191,10 @@ class ConfServer:
                 "clients": clients,
                 "helperbot": [{"state": helperbot}],
                 "mqtt_server": [
-                    {"state": mqttserver.transitions.state},
+                    {"state": bumper.mqttserver.broker_state(mqttserver)},
                     {
                         "sessions": [
-                            {"count": len(mqttserver._sessions)},
+                            {"count": len(broker_sessions)},
                             {"clients": mq_sessions},
                         ]
                     },
@@ -275,12 +276,12 @@ class ConfServer:
 
     async def restart_MQTT(self):
         
-        if not (bumper.mqtt_server.broker.transitions.state == "stopped" or bumper.mqtt_server.broker.transitions.state == "not_started"):
+        broker_state = bumper.mqttserver.broker_state(bumper.mqtt_server.broker)
+        if not (broker_state == "stopped" or broker_state == "not_started"):
             # close session writers - this was required so bots would reconnect properly after restarting
-            for sess in list(bumper.mqtt_server.broker._sessions):                
-                sessobj = bumper.mqtt_server.broker._sessions[sess][1]
-                if sessobj.session.transitions.state == "connected":
-                    await sessobj.writer.close()
+            for client_id, session, handler in bumper.mqttserver.broker_sessions(bumper.mqtt_server.broker):
+                if bumper.mqttserver.session_state(handler.session) == "connected":
+                    await bumper.mqttserver.close_session_connection(handler)
 
             #await bumper.mqtt_server.broker.shutdown()
             aloop = asyncio.get_event_loop()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from bumper.confserver import ConfServer
-from bumper.mqttserver import MQTTServer, MQTTHelperBot
+from bumper.mqttserver import MQTTServer, MQTTHelperBot, broker_state, client_is_connected
 from bumper.xmppserver import XMPPServer
 from bumper.models import *
 from bumper.db import *
@@ -125,7 +125,7 @@ else:
     translog.addHandler(logging.StreamHandler(sys.stdout))
 translog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("passlib").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-brokerlog = logging.getLogger("hbmqtt.broker")
+brokerlog = logging.getLogger("amqtt.broker")
 #brokerlog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger #There are some sublogs that could be set if needed (.plugins)
@@ -133,7 +133,7 @@ if not log_to_stdout:
     brokerlog.addHandler(mqtt_rotate)
 else:
     brokerlog.addHandler(logging.StreamHandler(sys.stdout))
-protolog = logging.getLogger("hbmqtt.mqtt.protocol")
+protolog = logging.getLogger("amqtt.mqtt.protocol")
 #protolog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger
@@ -141,7 +141,7 @@ if not log_to_stdout:
     protolog.addHandler(mqtt_rotate)
 else:
     protolog.addHandler(logging.StreamHandler(sys.stdout))
-clientlog = logging.getLogger("hbmqtt.client")
+clientlog = logging.getLogger("amqtt.client")
 #clientlog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
 if not log_to_stdout:
     clientlog.addHandler(mqtt_rotate)
@@ -250,7 +250,7 @@ async def start():
     while mqtt_helperbot.Client is None:
         await asyncio.sleep(0.1)
 
-    while not mqtt_helperbot.Client.session.transitions.state == "connected":
+    while not client_is_connected(mqtt_helperbot.Client):
         await asyncio.sleep(0.1)
 
     # Start web servers
@@ -275,12 +275,12 @@ async def shutdown():
 
         await conf_server.stop_server()
         await conf_server_2.stop_server()
-        if mqtt_server.broker.transitions.state == "started":
+        if broker_state(mqtt_server.broker) == "started":
             await mqtt_server.broker.shutdown()
-        elif mqtt_server.broker.transitions.state == "starting":
-            while mqtt_server.broker.transitions.state == "starting":
+        elif broker_state(mqtt_server.broker) == "starting":
+            while broker_state(mqtt_server.broker) == "starting":
                 await asyncio.sleep(0.1)
-            if mqtt_server.broker.transitions.state == "started":
+            if broker_state(mqtt_server.broker) == "started":
                 await mqtt_server.broker.shutdown()
                 await mqtt_helperbot.Client.disconnect()
         if xmpp_server.server:

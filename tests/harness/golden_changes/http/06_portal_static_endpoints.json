@@ -1,0 +1,345 @@
+{
+  "changes": [
+    "C-001"
+  ],
+  "expected": {
+    "description": "Portal API endpoints with fixed bodies, pim data and file downloads.",
+    "steps": [
+      {
+        "request": {
+          "body": {
+            "json": {
+              "auth": {
+                "realm": "ecouser.net",
+                "resource": "ecoglobe",
+                "token": "us_token",
+                "userid": "user123",
+                "with": "users"
+              },
+              "count": 20
+            }
+          },
+          "method": "POST",
+          "path": "/api/neng/message/hasUnreadMsg",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "data": {
+              "hasUnRead": true
+            }
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "neng hasUnreadMsg"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "auth": {
+                "realm": "ecouser.net",
+                "resource": "ecoglobe",
+                "token": "us_token",
+                "userid": "user123",
+                "with": "users"
+              },
+              "count": 20
+            }
+          },
+          "method": "POST",
+          "path": "/api/neng/message/getShareMsgs",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "data": {
+              "hasNext": false,
+              "msgs": []
+            }
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "neng getShareMsgs"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "auth": {
+                "realm": "ecouser.net",
+                "resource": "ecoglobe",
+                "token": "us_token",
+                "userid": "user123",
+                "with": "users"
+              },
+              "count": 20
+            }
+          },
+          "method": "POST",
+          "path": "/api/neng/message/getlist",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "data": {
+              "hasNext": false,
+              "msgs": []
+            }
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "neng getlist"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/api/ecms/app/ad/res",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "data": [],
+            "message": "success",
+            "success": true
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "ecms ad res"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "did": "E1001",
+              "mid": "ls1ok3"
+            }
+          },
+          "method": "POST",
+          "path": "/api/rapp/sds/user/data/map/get",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "data": {
+              "data": {
+                "name": "My Home"
+              },
+              "tag": null
+            },
+            "message": "success"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "rapp map get"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "POST",
+          "path": "/api/pim/product/getProductIotMap",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": "0000",
+            "data": {
+              "_digest": {
+                "length": 30479,
+                "sha256": "685a1bd25ea83f7c2116759ea1b82d1b08ab5220c8caea2b07d9fe2b4b3f228d"
+              }
+            }
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "pim getProductIotMap"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/api/pim/product/getConfignetAll",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "configFAQ": {
+              "configFailedUrl": "https://portal-ww.ecouser.net/api/pim/configfail.html?lang=en&defaultLang=en",
+              "contactUS": "helper",
+              "notFoundAPUrl": "https://portal-ww.ecouser.net/api/pim/findWifi.html?lang=en&defaultLang=en",
+              "wifiFAQUrl": "https://portal-ww.ecouser.net/api/pim/wififaq.html?lang=en&defaultLang=en"
+            },
+            "data": {
+              "_digest": {
+                "length": 23488,
+                "sha256": "5bef331a2ba23b669d9ce42c11f3e08a9b45821ed69d87b917ad9781bb598d3d"
+              }
+            },
+            "msg": "success"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "pim getConfignetAll"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/api/pim/product/getConfigGroups",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 0,
+            "configFAQ": {
+              "configFailedUrl": "https://portal-ww.ecouser.net/api/pim/configfail.html?lang=en&defaultLang=en",
+              "contactUS": "helper",
+              "notFoundAPUrl": "https://portal-ww.ecouser.net/api/pim/findWifi.html?lang=en&defaultLang=en",
+              "wifiFAQUrl": "https://portal-ww.ecouser.net/api/pim/wififaq.html?lang=en&defaultLang=en"
+            },
+            "data": {
+              "_digest": {
+                "length": 18227,
+                "sha256": "f9ea05eac03335d6968e3148a92159025c98ba3fa63564dbb16d6cd138051c64"
+              }
+            },
+            "msg": "success"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "pim getConfigGroups"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/api/pim/dictionary/getErrDetail",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": -1,
+            "data": [],
+            "msg": "This errcode's detail is not exists"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "pim getErrDetail"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "pids": [
+                "5e14196a6e71b80001b60fda",
+                "0000000000000000000000ff"
+              ]
+            }
+          },
+          "method": "POST",
+          "path": "/api/pim/product/software/config/batch",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "code": 200,
+            "data": [
+              {
+                "cfg": {
+                  "supported": {
+                    "battery": true,
+                    "charge": true,
+                    "clean": true,
+                    "tmallstand": false,
+                    "video": false
+                  }
+                },
+                "pid": "5e14196a6e71b80001b60fda"
+              },
+              {
+                "cfg": {},
+                "pid": "5e14196a6e71b80001b60fda"
+              },
+              {
+                "cfg": {},
+                "pid": "0000000000000000000000ff"
+              }
+            ],
+            "message": "success"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "pim product config batch (known pid is listed twice, unknown once)"
+      },
+      {
+        "request": {
+          "body": {
+            "content_type": "application/json",
+            "raw": "{not json"
+          },
+          "method": "POST",
+          "path": "/api/pim/product/software/config/batch",
+          "port": "https"
+        },
+        "response": {
+          "body_text": "500: Internal Server Error",
+          "content_type": "text/plain; charset=utf-8",
+          "status": 500
+        },
+        "step": "pim product config batch malformed"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/api/pim/file/get/5ba4a2cb6c2f120001c32839",
+          "port": "https"
+        },
+        "response": {
+          "body_bytes": {
+            "length": 146879,
+            "sha256": "bbebe8f517036665168f426357e8b682a9b4a654efb02566951ab68c03e52b63"
+          },
+          "content_type": "image/jpeg",
+          "status": 200
+        },
+        "step": "pim file get"
+      },
+      {
+        "request": {
+          "body": null,
+          "method": "GET",
+          "path": "/upload/global/2019/12/16/2019121603180741b73907046e742b80e8fe4a90fe2498.png",
+          "port": "https"
+        },
+        "response": {
+          "body_bytes": {
+            "length": 146879,
+            "sha256": "bbebe8f517036665168f426357e8b682a9b4a654efb02566951ab68c03e52b63"
+          },
+          "content_type": "image/jpeg",
+          "status": 200
+        },
+        "step": "upload global file"
+      }
+    ]
+  },
+  "reason": "aiohttp >= 3.7 answers a handler that returned None with 500 instead of dropping the connection."
+}

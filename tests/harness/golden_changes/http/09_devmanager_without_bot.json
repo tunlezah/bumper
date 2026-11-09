@@ -1,0 +1,275 @@
+{
+  "changes": [
+    "C-001"
+  ],
+  "expected": {
+    "description": "iot/dim devmanager and lg log.do when the target bot does not exist.",
+    "steps": [
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "PollSCResult"
+            }
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "iot PollSCResult"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "HasUnreadMsg"
+            }
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok",
+            "unRead": false
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "iot HasUnreadMsg"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "PreWifiConfig"
+            }
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "iot PreWifiConfig"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "Unknown"
+            }
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body_text": "500: Internal Server Error",
+          "content_type": "text/plain; charset=utf-8",
+          "status": 500
+        },
+        "step": "iot unknown td"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "auth": {
+                "realm": "ecouser.net",
+                "resource": "ECOGLOBLEac5ae987",
+                "token": "token_1234",
+                "userid": "testuser",
+                "with": "users"
+              },
+              "cmdName": "GetChargeState",
+              "payload": "<ctl/>",
+              "payloadType": "x",
+              "td": "q",
+              "toId": "did_missing",
+              "toRes": "res_1234",
+              "toType": "ls1ok3"
+            }
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body_text": "500: Internal Server Error",
+          "content_type": "text/plain; charset=utf-8",
+          "status": 500
+        },
+        "step": "iot command for unknown bot"
+      },
+      {
+        "request": {
+          "body": {
+            "content_type": "application/json",
+            "raw": "{oops"
+          },
+          "method": "POST",
+          "path": "/api/iot/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body_text": "500: Internal Server Error",
+          "content_type": "text/plain; charset=utf-8",
+          "status": 500
+        },
+        "step": "iot malformed"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "PollSCResult"
+            }
+          },
+          "method": "POST",
+          "path": "/api/dim/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "dim PollSCResult"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "HasUnreadMsg"
+            }
+          },
+          "method": "POST",
+          "path": "/api/dim/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok",
+            "unRead": false
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "dim HasUnreadMsg"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "td": "ReceiveShareDevice"
+            }
+          },
+          "method": "POST",
+          "path": "/api/dim/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "ret": "ok"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "dim ReceiveShareDevice"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "cmdName": "GetChargeState",
+              "payload": "<ctl/>",
+              "payloadType": "x",
+              "td": "q",
+              "toId": "did_missing",
+              "toRes": "res_1234",
+              "toType": "ls1ok3"
+            }
+          },
+          "method": "POST",
+          "path": "/api/dim/devmanager.do",
+          "port": "https"
+        },
+        "response": {
+          "body_text": "500: Internal Server Error",
+          "content_type": "text/plain; charset=utf-8",
+          "status": 500
+        },
+        "step": "dim command for unknown bot"
+      },
+      {
+        "request": {
+          "body": {
+            "json": {
+              "auth": {
+                "realm": "ecouser.net",
+                "resource": "ECOGLOBLEac5ae987",
+                "token": "token_1234",
+                "userid": "testuser",
+                "with": "users"
+              },
+              "did": "did_missing",
+              "resource": "res_1234",
+              "td": "GetCleanLogs"
+            }
+          },
+          "method": "POST",
+          "path": "/api/lg/log.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "errno": "0001",
+            "id": "<random-alpha-6>",
+            "ret": "fail"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "lg GetCleanLogs for unknown bot"
+      },
+      {
+        "request": {
+          "body": {
+            "content_type": "application/json",
+            "raw": "[]"
+          },
+          "method": "POST",
+          "path": "/api/lg/log.do",
+          "port": "https"
+        },
+        "response": {
+          "body": {
+            "errno": "0001",
+            "id": "<random-alpha-6>",
+            "ret": "fail"
+          },
+          "content_type": "application/json; charset=utf-8",
+          "status": 200
+        },
+        "step": "lg malformed"
+      }
+    ]
+  },
+  "reason": "aiohttp >= 3.7 answers a handler that returned None with 500 instead of dropping the connection."
+}
