@@ -15,9 +15,19 @@ address=/ecovacs.net/{bumper server ip}
 ````
 **Note:** *Replace `{bumper server ip}` with your server's IP*
 
-If using PiHole, reload FTL to apply changes:
-  
-  `sudo service pihole-FTL reload`
+If using PiHole, restart FTL to apply changes:
+
+  `sudo systemctl restart pihole-FTL`
+
+**Pi-hole v6 and newer** do not read `/etc/dnsmasq.d/` unless told to. Enable the setting `misc.etc_dnsmasq_d` first, on the web interface's "All settings" page or with:
+
+  `sudo pihole-FTL --config misc.etc_dnsmasq_d true`
+
+## Check that the override is used
+
+From a device on the network, `nslookup portal.ecouser.net` should answer with your Bumper server's IP.
+
+The override only works for devices that ask your DNS server. Phones and browsers can bypass it with encrypted DNS: on Android set "Private DNS" to off or automatic, and on iOS turn off iCloud Private Relay and any DNS or VPN profile for the Wi-Fi network you use with Bumper. Robots take their DNS server from your router's DHCP settings.
 
 ## Manual Override
 

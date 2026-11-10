@@ -1,19 +1,30 @@
 site_name: Bumper Docs
+site_description: Self-hosted replacement for the Ecovacs robot vacuum cloud
+repo_url: https://github.com/tunlezah/bumper
+edit_uri: edit/master/docs/
+
+# docs/requirements.txt lists the build dependencies; it is not a page.
+exclude_docs: |
+  requirements.txt
+
 nav:
   - Home: index.md
-  - Using: 
+  - Using:
     - "Command-Line": CmdLine.md
     - "Docker": Docker.md
     - "Using with Apps": Use_With_App.md
     - "Using with Sucks": Use_With_Sucks.md
   - Certs: Create_Certs.md
   - DNS: DNS_Setup.md
-  - Configuration: 
+  - Configuration:
     - "Environment Variables": Env_Var.md
   - Developing:
     - "Reversing The Protocols": Sniffing.md
     - "Developing and Testing": Develop.md
     - "How It Works": How_It_Works.md
+  - Modernisation:
+    - "Changes and Follow-ups": modernisation/CHANGES.md
+    - "Legacy Baseline": modernisation/BASELINE.md
   - Origins: origins.md
 
 theme: readthedocs

@@ -1,12 +1,14 @@
 # Using Bumper with Sucks
 
-At this time you'll need to use the bmartin5692 fork of sucks.  Especially if you have a newer bot like an Ozmo.
+**Note:** Sucks is no longer developed. Its own package description calls it "an abandoned library", and its last release (0.9.6) dates from May 2020, so it may need an older Python than Bumper does. Install it in its own environment. It has not been tested against this version of Bumper.
+
+You'll need to use the bmartin5692 fork of sucks.  Especially if you have a newer bot like an Ozmo.
 
 - Download and install [Sucks](https://github.com/bmartin5692/sucks)
 
 - You can use Sucks CLI to control the bots
 
-**Note:** When performing the login command you'll either want to set `verify_ssl` to `False` or provide the full path to your Bumper certificate.
+**Note:** When performing the login command you'll either want to set `verify_ssl` to `False` or provide the full path to your Bumper CA certificate (`certs/ca.crt`).
 
 OR
 

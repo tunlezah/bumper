@@ -12,21 +12,43 @@ overrides differ from the legacy goldens *only* in the ways described here
 
 | | before | after |
 |---|---|---|
-| Python | 3.8 / 3.9 only (Docker: 3.7) | 3.12, 3.13, 3.14 (Docker: 3.13) |
+| Python | 3.8 / 3.9 only (Docker: 3.7) | 3.12, 3.13, 3.14, 3.15 (Docker: 3.14) |
 | MQTT broker/client | hbmqtt 0.9.5 (unmaintained) | amqtt 0.12 |
 | HTTP | aiohttp 3.6.2 | aiohttp 3.14 |
 | DB | TinyDB 3.15, a new never-closed handle per call (closed only by GC, with a `ResourceWarning`) | TinyDB 4.9, one shared instance, closed on shutdown |
 | Password hashes | passlib 1.7.2 | libpass 1.9 (maintained fork, same import) |
 | Packaging | Pipfile / requirements.txt | `pyproject.toml` + `uv.lock` |
 | TLS | whatever the platform allowed | one policy for 443/8883/5223, TLS 1.0+ by default, `BUMPER_TLS_MIN_VERSION` |
-| Docker | `python:3.7-alpine`, root, Docker Hub | `python:3.13-slim`, uid 10001, amd64+arm64 on GHCR |
+| Docker | `python:3.7-alpine`, root, Docker Hub | `python:3.14-slim`, uid 10001, amd64+arm64 on GHCR |
 | CI | Travis, AppVeyor | GitHub Actions |
 
 Proof of behaviour preservation: the black-box harness (`tests/harness/`)
 recorded the legacy behaviour *before* any change. It passes unchanged
 against the legacy code (Python 3.9, legacy profile), against the port
-(3.12, 3.13, 3.14) and against the Docker image (amd64 and arm64), apart
+(3.12, 3.13, 3.14, 3.15) and against the Docker image (amd64 and arm64), apart
 from the changes C-001 to C-007 below.
+
+## Toolchain refresh (November 2026)
+
+No change of behaviour; the harness and the goldens are untouched.
+
+* **Python 3.15** (released October 2026) is tested in CI next to 3.12–3.14.
+  No code change was needed: the unit tests pass with every
+  `DeprecationWarning` as an error, and the harness passes with the server's
+  warnings as errors.
+* **Docker image:** `python:3.14-slim` instead of `python:3.13-slim` (3.13
+  left bug-fix support in October 2026 and only gets security fixes). 3.15 was
+  not chosen for the image yet because PyYAML (pulled in by amqtt) has no
+  3.15 wheels, so the slim image would have to compile it.
+* **`create_certs` build stage:** `golang:1.27-trixie` instead of
+  `golang:1.24-bookworm` (Go 1.24 reached end of life in February 2026).
+* **uv 0.13.7** in CI and in the image (was 0.11.32); `uv.lock` re-resolved.
+  Dev tools: pytest 9 (was 8). The legacy-harness job keeps pytest 8.3,
+  the last line that supports its Python 3.9.
+* Runtime dependencies were already at their latest releases (aiohttp 3.14,
+  amqtt 0.12, TinyDB 4.9, libpass 1.9, Jinja2 3.1). The only runtime change in
+  the lock is transitive: typer 0.29 (amqtt's CLI), which now depends on
+  pydantic.
 
 ## Deliberate behaviour changes
 
@@ -231,7 +253,7 @@ code).
 These do not change protocol behaviour and are not covered by goldens. The
 container smoke test (`scripts/docker-smoke.sh`) covers them.
 
-* **Base image:** `python:3.13-slim` (Debian) instead of `python:3.7-alpine`.
+* **Base image:** `python:3.14-slim` (Debian) instead of `python:3.7-alpine`.
   Multi-arch `linux/amd64` + `linux/arm64`, published to
   `ghcr.io/<owner>/bumper` instead of Docker Hub.
 * **Non-root:** the process runs as `bumper` (uid/gid 10001); the old image ran

@@ -12,7 +12,7 @@ Bumper has a number of environment variables to help with custom deployments and
 | BUMPER_LOGS        | {full path to logs directory}      | The directory where logs should be stored                                                                                   |
 | BUMPER_DATA        | {full path to data directory}      | The directory where persistent data should be stored (bumper.db)                                                            |
 | BUMPER_DEBUG       | true                               | Run Bumper with debug mode/logging                                                                                          |
-| LOG_TO_STDOUT      | true                               | Instead of logging to logs/, logs to to STDOUT |
+| LOG_TO_STDOUT      | true                               | Instead of logging to logs/, logs to STDOUT |
 | BUMPER_TLS_MIN_VERSION | TLSv1 (default), TLSv1_1, TLSv1_2, TLSv1_3 | Lowest TLS version accepted on the HTTPS (443), MQTT (8883) and XMPP STARTTLS (5223) listeners. The default accepts TLS 1.0 like Bumper always did, because older robots may not support anything newer (on OpenSSL 3 this needs security level 0). Set `TLSv1_2` or higher if all your robots support it; Bumper logs the version each TLS connection negotiated. |
 | BUMPER_PORT_HTTPS  | {port}, default 443                | Port of the HTTPS config server. Bots and apps always connect to 443, so if you change it (for example to run without root under `network_mode: host`), forward 443 to it. |
 | BUMPER_PORT_HTTP   | {port}, default 8007               | Port of the plain-HTTP config server (bots fetch `lookup.do` from it). |

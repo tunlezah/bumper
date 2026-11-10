@@ -8,7 +8,7 @@ __pycache__
 !.github/
 !.gitignore
 !.dockerignore
-!.travis.yml
+!.readthedocs.yaml
 
 # Ignore items in test (report, cache, etc), except files starting with test
 tests/* 

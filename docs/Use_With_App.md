@@ -2,6 +2,8 @@
 
 Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.
 
+**Note:** Bumper's app support was written against the app versions of 2019 to 2021. Current app versions have not been tested with it, and the steps below have not been re-checked on current iOS and Android releases. Please report what you find in the [issue tracker](https://github.com/tunlezah/bumper/issues).
+
 **Steps**
 
 1. Configure your DNS server as described above in the [DNS](DNS_Setup.md) doc
@@ -10,9 +12,9 @@ Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with
 
 ## Import the Bumper CA Cert
 
-- E-mail yourself the Bumper CA cert (located at `./certs/CA/cacert.crt`)
+- Get the Bumper CA cert onto your phone, for example by e-mailing it to yourself. It is `ca.crt` in Bumper's `certs` directory. With Docker, copy it out of the container first: `docker cp bumper:/bumper/certs/ca.crt .`
 
-**Note:** Make sure you select the `cacert.crt` file, which is a DER encoded version that will work on either Android or iOS.
+**Note:** Make sure you select `ca.crt` (the CA certificate), not `bumper.crt`, and never send `ca.key` or `bumper.key` anywhere. `ca.crt` is PEM encoded, which both Android and iOS accept.
 
 ![Example of emailing CA cert](images/emailcert.png)
 
@@ -27,7 +29,7 @@ Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with
 1. Open the e-mail on your iOS device, and click the attached cert
 ![Example of email on iOS device](images/ios_email_cert.png)
 
-1. Install the profile by clicking "Install", and entering your pass code if prompted
+1. Install the profile by clicking "Install", and entering your pass code if prompted. On current iOS versions the certificate is only downloaded at this point ("Profile Downloaded"); open Settings > General > VPN & Device Management, select the downloaded profile and install it there.
 ![Example of install profile on iOS device](images/ios_install_profile.png)
 
 1. Accept the certificate warning by clicking "Install" again
@@ -54,6 +56,8 @@ Android 7 introduced changes to the certificate mechanism. See [blog entry](http
 > Apps that target API Level 24 and above no longer trust user or admin-added CAs for secure connections, by default.
 
 To circumvent this problem, the certificate must be added as a system storage.
+
+**Android 14 and up:** the system certificates are no longer read from `/system/etc/security/cacerts` but from the Conscrypt module (`/apex/com.android.conscrypt/cacerts`), so the commands below have no effect there. A rooted device needs a tool that adds the certificate to that store instead.
 
 ```bash
 openssl x509 -in ca.crt -noout -text >> ca.crt
