@@ -12,6 +12,12 @@ Bumper runs multiple services to re-create what the central EcoVacs servers prov
 | XMPP Server | For bots that utilize this protocol              | 5223         | `xmppserver.py` |
 | MQTT Server | For bots that utilize this protocol              | 8883         | `mqttserver.py` |
 
+Port 443 is HTTPS and port 8007 is plain HTTP. The MQTT server always uses TLS, and the XMPP server upgrades to TLS with STARTTLS. All three use the server certificate from the `certs` directory (see [Creating Certs](Create_Certs.md)), with one TLS policy from `tls.py`. The ports can be changed with [environment variables](Env_Var.md), but robots and apps always connect to the standard ones.
+
+The web server on port 8007 also serves a status page at `/` that lists the robots, clients and MQTT sessions Bumper knows about.
+
+The REST API is split into plugins, one file per API area in `bumper/plugins/`. Robots, clients and tokens are stored in a [TinyDB](https://tinydb.readthedocs.io/) file, `bumper.db`, in the data directory. The MQTT server is built on [amqtt](https://amqtt.readthedocs.io/).
+
 **App/Authentication**
 
 EcoVacs servers provide authentication of accounts and match those up to registered robots.  Once authenticated, users can control the robots via the app.  ***Bumper*** provides an implementation of the central servers providing authentication and matching.
@@ -62,3 +68,5 @@ However, commands issued via the app/client are not published directly to the `p
 The Rest API provided by `portal-{countrycode}.ecouser.net` receives the command and passes it to a "helper" bot that has permission to publish to the `p2p` topic the robot is subscribed to.  The "helper" bot waits for a response to be published by the robot and then passes that response back to the server for the Rest API to send back as a response.
 
 ***Bumper*** provides a simulated RestAPI and "helper" bot, performing the same function as the central server above.
+
+**MQTT on port 443:** version 2 and later of the app, and robots with newer firmware, connect to the MQTT broker on port 443 instead of 8883. Bumper's HTTPS server uses that port, so both have to share it. The [Docker Compose example](Docker.md#docker-compose) puts an nginx proxy in front of Bumper that looks at the server name of each connection to port 443 and passes MQTT connections on to port 8883.

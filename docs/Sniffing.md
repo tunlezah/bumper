@@ -1,11 +1,13 @@
+**Note:** this page was written by the original project in 2019 and 2020 and has not been re-tested with current tools. Some commands in the scripts below (`ifconfig`, `route`, `gnome-terminal -x`) have since been replaced on current distributions.
+
 Reverse engineering the protocols and default apps/APIs requires some patience and work.  I've found using a Kali Linux VM that hosts an access point with MitMProxy works well.  I followed a number of articles in order to get started, which helped in creating the below VM setup and scripts.
 
 > References:
 > 
-> - https://blog.heckel.xyz/2013/07/01/how-to-use-mitmproxy-to-read-and-modify-https-traffic-of-your-phone/
+> - https://heckel.io/blog/how-to-use-mitmproxy-to-read-and-modify-https-traffic-of-your-phone/
 > - https://docs.mitmproxy.org/stable/howto-wireshark-tls/
 > - https://www.yeahhub.com/create-fake-ap-dnsmasq-hostapd-kali-linux/
-> - http://www.geekmind.net/2011/01/linux-wifi-operation-not-possible-due.html
+> - https://web.archive.org/web/20240414022823/http://www.geekmind.net/2011/01/linux-wifi-operation-not-possible-due.html (archived copy; the original page is gone)
 
 # VM Setup
 

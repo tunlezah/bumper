@@ -18,6 +18,7 @@ Pipfile
 Pipfile.lock
 requirements.txt
 mkdocs.yml
+.readthedocs.yaml
 conftest.py
 *.md
 # committed prebuilt binaries for non-Docker users; the image builds its own

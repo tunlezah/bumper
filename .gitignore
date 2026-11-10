@@ -8,6 +8,7 @@ __pycache__
 !.github/
 !.gitignore
 !.dockerignore
+!.readthedocs.yaml
 
 # Ignore items in test (report, cache, etc), except files starting with test
 tests/* 

@@ -2,13 +2,15 @@
 
 Bumper requires specially crafted certificates to work properly.  In the spirit of security, Bumper will not ship with default certificates.  Users will need to generate and provide their own certificates.  
 
-Certificates should be placed in the `{bumper_home}/certs` directory.  If certificates are located elsewhere [environment variables](Env_Var.md) can be set that point to their location.
+Certificates should be placed in the `{bumper_home}/certs` directory, named `ca.crt`, `bumper.crt` and `bumper.key`.  If certificates are located elsewhere [environment variables](Env_Var.md) can be set that point to their location.
+
+**Docker:** the container generates the certificates itself on first start; see the [Docker](Docker.md#certificates) doc. The rest of this page is for running Bumper from source, or for bringing your own certificates.
 
 Users can generate certificates in the following ways:
 
 | Method                                            | Description                                                                                                         |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [Create_Certs](#creating-certs-using-createcerts) | ***(Preferred)*** This is a utility that has been created to assist in generating the certificates required easily. |
+| [Create_Certs](#creating-certs-using-create_certs) | ***(Preferred)*** This is a utility that has been created to assist in generating the certificates required easily. |
 | [OpenSSL](#manually-create-certs-with-openssl)    | Users can manually create the same certificates as Create_Certs by utilizing OpenSSL.                               |
 | [Custom CA/Self](#using-a-custom-caself)          | If a user has their own CA the certificates can be generated there and used within Bumper.                          |
 
@@ -19,21 +21,23 @@ Users can generate certificates in the following ways:
 
 ## Creating certs using Create_Certs
 
-Create_Certs was created to ease creation of certificates specifically for Bumper.  Binaries are provided for Windows/Linux/OSX/RPi (ARMv5) in the Create_Certs directory.
+Create_Certs was created to ease creation of certificates specifically for Bumper.  Binaries are provided for Windows/Linux/OSX/RPi (ARMv5) in the `create_certs` directory.
 
-| Binary                   | Platform             |
-| ------------------------ | -------------------- |
-| create_certs_linux       | Linux                |
-| create_certs_osx         | macOS/x              |
-| create_certs_windows.exe | Windows              |
-| create_certs_rpi         | RaspberryPi (ARM v5) |
+| Binary                   | Platform                                              |
+| ------------------------ | ----------------------------------------------------- |
+| create_certs_linux       | Linux, x86-64                                         |
+| create_certs_osx         | macOS, Intel (on Apple Silicon it needs Rosetta)      |
+| create_certs_windows.exe | Windows, x86-64                                       |
+| create_certs_rpi         | Linux, 32-bit ARM (ARM v5 and up, e.g. Raspberry Pi)  |
 
-Create_Certs is written in Go which allows cross-platform compiling. If the binaries don't work on your platform, install Go. 
+These binaries were built by the original project and have not been rebuilt since. There is none for 64-bit ARM: on a 64-bit ARM Linux system Bumper starts `create_certs_rpi`, which only runs if the system can still execute 32-bit programs.
 
-With Go installed you can:
+Create_Certs is written in Go which allows cross-platform compiling. If the binaries don't work on your platform, or you would rather not run a prebuilt binary, install [Go](https://go.dev/dl/).
 
-* Execute the go code - `go run create_certs/src/create_certs.go` 
-* Build a new binary for your platform - `go build create_certs/src/create_certs.go`
+With Go installed you can, from the Bumper directory:
+
+* Execute the go code - `go run create_certs/src/create_certs.go -out certs -inSAN create_certs/Bumper_SAN.txt`
+* Build a new binary for your platform - `go build -o create_certs/create_certs create_certs/src/create_certs.go`
 
 ### Usage
 
@@ -42,6 +46,12 @@ Create_Certs will automatically create the required certificates in the director
 1. `cd certs`
 2. Execute create_certs (using the binary fitting your platform) - `../create_certs/create_certs_{platform}`
 3. The certificates are generated and should be available in the current directory (certs)
+
+Options: `-out {directory}` writes the certificates somewhere other than the current directory, and `-inSAN {file}` reads the Subject Alternative Names from another file than `Bumper_SAN.txt` next to the binary.
+
+Create_Certs writes `ca.crt`, `ca.key`, `bumper.crt` and `bumper.key`. `ca.crt` is the certificate to import on your devices. `ca.key` is only needed to issue certificates and is not read by Bumper.
+
+**The certificates are valid for 2 years and are not renewed automatically.** Running Create_Certs again creates a *new* CA, which has to be imported on every device again.
 
 ## Subject Alternative Name
 
@@ -179,4 +189,4 @@ DNS.9 = *.area.ww.ecouser.net
 
 ## Using a Custom CA/Self
 
-This should work siimilar to the OpenSSL method.  Ensure the server certificate has the proper [SANs](#subject-alternative-name) in place.
+This should work similar to the OpenSSL method.  Ensure the server certificate has the proper [SANs](#subject-alternative-name) in place.

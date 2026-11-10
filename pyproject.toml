@@ -25,7 +25,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bmartin5692/bumper"
+Homepage = "https://github.com/tunlezah/bumper"
+Documentation = "https://github.com/tunlezah/bumper/tree/master/docs"
+Issues = "https://github.com/tunlezah/bumper/issues"
+Upstream = "https://github.com/bmartin5692/bumper"
 
 [project.scripts]
 bumper = "bumper:main"

@@ -127,7 +127,8 @@ address in these lines is the proxy's.
 ## Docker Compose
 
 A Docker Compose example is in the
-[example folder](../example/docker-compose). It starts two services:
+[example folder](https://github.com/tunlezah/bumper/tree/master/example/docker-compose).
+It starts two services:
 
 - Bumper itself
 - an nginx stream proxy that routes port 443 by SNI: MQTT host names, and
