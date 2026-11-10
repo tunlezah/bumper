@@ -1,0 +1,175 @@
+{
+  "app_transcript": [
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><starttls xmlns=\"urn:ietf:params:xml:ns:xmpp-tls\"><required/></starttls><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open"
+    },
+    {
+      "received": "<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "sent": "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "step": "starttls"
+    },
+    {
+      "step": "tls handshake",
+      "tls_version": "TLSv1.3"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open after TLS"
+    },
+    {
+      "received": "<success xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"/>",
+      "sent": "<auth xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\" mechanism=\"PLAIN\">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>",
+      "step": "sasl auth"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"/><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open after auth"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"5E9872D5-547E-49AF-AE51-9EFAA282F952\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><jid>fuid_tmpuser@ecouser.net/IOSF53D07BA</jid></bind></iq>",
+      "sent": "<iq type=\"set\" id=\"5E9872D5-547E-49AF-AE51-9EFAA282F952\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>IOSF53D07BA</resource></bind></iq>",
+      "step": "bind"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"FA1041E7-AA27-43DD-BAA3-64DE2DE56AA3\" /><iq from='ecouser.net' to='fuid_tmpuser@ecouser.net/IOSF53D07BA' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>",
+      "sent": "<iq type=\"set\" id=\"FA1041E7-AA27-43DD-BAA3-64DE2DE56AA3\"><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></iq>",
+      "step": "session"
+    },
+    {
+      "received": "<presence to=\"fuid_tmpuser@ecouser.net/IOSF53D07BA\"> dummy </presence>",
+      "sent": "<presence type=\"available\"/>",
+      "step": "presence available"
+    },
+    {
+      "received": "",
+      "sent": "<iq id=\"7\" to=\"E0000000000000001234@159.ecorobot.net/atom\" type=\"set\"><query xmlns=\"com:ctl\"><ctl id=\"72107787\" td=\"GetCleanState\" /></query></iq>",
+      "step": "app sends GetCleanState to bot"
+    },
+    {
+      "received": "<iq from=\"E0000000000000001234@159.ecorobot.net/atom\" id=\"2700\" to=\"fuid_tmpuser@ecouser.net/IOSF53D07BA\" type=\"set\"><query xmlns=\"com:ctl\"><ctl td=\"BatteryInfo\"><battery power=\"100\" /></ctl></query></iq>",
+      "step": "app receives"
+    },
+    {
+      "received": "",
+      "sent": "<iq id=\"104934615\" to=\"E0000000000000001234@159.ecorobot.net/atom\" type=\"get\"><ping xmlns=\"urn:xmpp:ping\" /></iq>",
+      "step": "app pings bot"
+    },
+    {
+      "received": "<iq from=\"E0000000000000001234@159.ecorobot.net/atom\" id=\"s2c1\" to=\"ecouser.net\" type=\"result\" />",
+      "step": "app receives"
+    },
+    {
+      "received": "",
+      "step": "app receives"
+    },
+    {
+      "closed_by_server": true,
+      "received": "</stream:stream>",
+      "sent": "</stream:stream>",
+      "step": "app closes stream"
+    }
+  ],
+  "bot_after_close": [
+    {
+      "class": "159",
+      "company": "eco-legacy",
+      "did": "E0000000000000001234",
+      "mqtt_connection": false,
+      "name": "E0000000000000001234",
+      "nick": "",
+      "resource": "atom",
+      "xmpp_connection": false
+    }
+  ],
+  "bot_in_device_list": [
+    {
+      "class": "159",
+      "company": "eco-legacy",
+      "did": "E0000000000000001234",
+      "mqtt_connection": false,
+      "name": "E0000000000000001234",
+      "nick": "",
+      "resource": "atom",
+      "xmpp_connection": true
+    }
+  ],
+  "bot_transcript": [
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><starttls xmlns=\"urn:ietf:params:xml:ns:xmpp-tls\"><required/></starttls><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns:stream='http://etherx.jabber.org/streams' xmlns='jabber:client' to='159.ecorobot.net' version='1.0'>",
+      "step": "stream open"
+    },
+    {
+      "received": "<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "sent": "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "step": "starttls"
+    },
+    {
+      "step": "tls handshake",
+      "tls_version": "TLSv1.3"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns:stream='http://etherx.jabber.org/streams' xmlns='jabber:client' to='159.ecorobot.net' version='1.0'>",
+      "step": "stream open after TLS"
+    },
+    {
+      "received": "<success xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"/>",
+      "sent": "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='PLAIN'>AEUwMDAwMDAwMDAwMDAwMDAxMjM0AGVuY3J5cHRlZF9wYXNz</auth>",
+      "step": "sasl auth"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"/><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></stream:features>",
+      "sent": "<stream:stream xmlns:stream='http://etherx.jabber.org/streams' xmlns='jabber:client' to='159.ecorobot.net' version='1.0'>",
+      "step": "stream open after auth"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"2521\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><jid>E0000000000000001234@159.ecorobot.net/atom</jid></bind></iq>",
+      "sent": "<iq type='set' id='2521'><bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'><resource>atom</resource></bind></iq>",
+      "step": "bind"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"2522\" /><iq from='ecouser.net' to='E0000000000000001234@159.ecorobot.net/atom' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>",
+      "sent": "<iq type='set' id='2522'><session xmlns='urn:ietf:params:xml:ns:xmpp-session'/></iq>",
+      "step": "session"
+    },
+    {
+      "received": "<presence to=\"E0000000000000001234@159.ecorobot.net/atom\"> dummy </presence><iq type=\"set\" id=\"14\" to=\"E0000000000000001234@159.ecorobot.net/atom\" from=\"ecouser.net\"><query xmlns=\"com:ctl\"><ctl td=\"GetDeviceInfo\"/></query></iq>",
+      "sent": "<presence><status>hello world</status></presence>",
+      "step": "presence with status"
+    },
+    {
+      "received": "<iq from=\"fuid_tmpuser@ecouser.net/IOSF53D07BA\" id=\"7\" to=\"E0000000000000001234@159.ecorobot.net/atom\" type=\"set\"><query xmlns=\"com:ctl\"><ctl id=\"72107787\" td=\"GetCleanState\" /></query></iq>",
+      "step": "bot receives"
+    },
+    {
+      "received": "",
+      "sent": "<iq to='fuid_tmpuser@ecouser.net/IOSF53D07BA' type='set' id='2700'><query xmlns='com:ctl'><ctl td='BatteryInfo'><battery power='100'/></ctl></query></iq>",
+      "step": "bot sends BatteryInfo to app"
+    },
+    {
+      "received": "<iq from=\"fuid_tmpuser@ecouser.net/IOSF53D07BA\" id=\"104934615\" to=\"E0000000000000001234@159.ecorobot.net/atom\" type=\"get\"><ping xmlns=\"urn:xmpp:ping\" /></iq>",
+      "step": "bot receives ping"
+    },
+    {
+      "received": "",
+      "sent": "<iq type='result' from='E0000000000000001234@159.ecorobot.net/atom' to='ecouser.net' id='s2c1'/>",
+      "step": "bot answers server ping"
+    },
+    {
+      "received": "<iq type=\"set\" id=\"<uuid>\" from=\"someone@example.com\" to=\"E0000000000000001234@159.ecorobot.net/atom\"><query xmlns=\"com:ctl\"><ctl td=\"AddUser\" id=\"0000\" jid=\"fuid_tmpuser@ecouser.net\" /></query></iq><iq type=\"set\" id=\"<uuid>\" from=\"someone@example.com\" to=\"E0000000000000001234@159.ecorobot.net/atom\"><query xmlns=\"com:ctl\"><ctl td=\"SetAC\" id=\"1111\" jid=\"fuid_tmpuser@ecouser.net\"><acs><ac name=\"userman\" allow=\"1\"/><ac name=\"setting\" allow=\"1\"/><ac name=\"clean\" allow=\"1\"/></acs></ctl></query></iq><iq type=\"set\" id=\"<uuid>\" from=\"someone@example.com\" to=\"E0000000000000001234@159.ecorobot.net/atom\"><query xmlns=\"com:ctl\"><ctl td=\"GetUserInfo\" id=\"4444\" /><UserInfos/></query></iq>",
+      "sent": "<iq to='fuid_tmpuser@ecouser.net/IOSF53D07BA' type='result' id='103'><query xmlns='com:ctl'><ctl ret='fail' errno='103' error='permission denied, please contact someone@example.com'/></query></iq>",
+      "step": "bot reports errno 103"
+    },
+    {
+      "closed_by_server": true,
+      "received": "</stream:stream>",
+      "sent": "</stream:stream>",
+      "step": "bot closes stream"
+    }
+  ]
+}

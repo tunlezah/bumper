@@ -3,6 +3,7 @@ from aiohttp import web
 import logging
 import bumper
 from bumper import plugins
+from bumper.timeutil import utcnow_naive
 from datetime import datetime
 
 
@@ -46,7 +47,7 @@ class v1_private_userSetting(plugins.ConfServerApp):
                     ]
                 },
                 "msg": "操作成功",
-                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(utcnow_naive().timestamp()),
             }
 
             return web.json_response(body)

@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 import bumper
 import asyncio
 import pytest
@@ -8,7 +8,6 @@ import tinydb
 import pytest_asyncio
 import xml.etree.ElementTree as ET
 import socket
-from testfixtures import LogCapture
 import ssl
 
 
@@ -20,14 +19,15 @@ def mock_transport_extra_info(*args, **kwargs):
     return ("127.0.0.1", 5223)
 
 
-async def test_xmpp_server():
-    xmpp_address = ("127.0.0.1", 5223)
+async def test_xmpp_server(log_capture, free_port):
+    port = free_port()
+    xmpp_address = ("127.0.0.1", port)
     xmpp_server = bumper.XMPPServer(xmpp_address)
     await xmpp_server.start_async_server()
 
-    with LogCapture("xmppserver") as l:
+    with log_capture("xmppserver") as l:
 
-        reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
         writer.write(b"<stream:stream />")  # Start stream
         await writer.drain()
@@ -47,18 +47,21 @@ async def test_xmpp_server():
 
         assert len(xmpp_server.clients) == 0  # Client count decreased
 
-        reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
         writer.write(b"<stream:stream />")  # Start stream
         await writer.drain()
 
         await asyncio.sleep(0.1)
+        writer.close()
 
     xmpp_server.disconnect()
 
+    await asyncio.gather(xmpp_server.server_coro, return_exceptions=True)  # let serve_forever close the socket
+
 
 async def test_client_connect_no_starttls(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -101,7 +104,7 @@ async def test_client_connect_no_starttls(*args, **kwargs):
 
 
 async def test_client_end_stream(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -133,7 +136,7 @@ async def test_client_end_stream(*args, **kwargs):
 
 
 async def test_client_connect_starttls_called(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -207,65 +210,65 @@ async def test_client_connect_starttls_called(*args, **kwargs):
     assert xmppclient.state == xmppclient.INIT  # Client moved to INIT state
 
 
-async def test_xmpp_server_client_tls():
-
-    xmpp_address = ("127.0.0.1", 5223)
+async def test_xmpp_server_client_tls(log_capture, free_port):
+    port = free_port()
+    xmpp_address = ("127.0.0.1", port)
     xmpp_server = bumper.XMPPServer(xmpp_address)
     await xmpp_server.start_async_server()
 
-    with LogCapture("xmppserver") as l:
+    with log_capture("xmppserver") as l:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
-        async def do_stuff_after_start_tls(
-            ssl_reader, ssl_writer
-        ):  # Used after starttls
+        writer.write(
+            b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
+        )  # Start stream
+        await writer.drain()
 
-            writer.write(
-                b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
-            )  # New Stream
+        await asyncio.sleep(0.1)
 
-            await writer.drain()
+        writer.write(
+            b"<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>"
+        )  # Send StartTLS
+        await writer.drain()
 
-            writer.write(
-                b'<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="PLAIN">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>'
-            )  # Send Auth
+        await asyncio.sleep(0.1)
+        assert b"<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>" in await reader.read(4096)
 
-            await writer.drain()
+        # Upgrade the connection to TLS (public StreamWriter.start_tls, Python >= 3.11;
+        # the legacy test swapped protocol internals that are read-only now)
+        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        ssl_context.check_hostname = False
+        ssl_context.load_verify_locations(cafile=bumper.ca_cert)
+        await writer.start_tls(ssl_context)
+        # Give the server time to switch its protocol to the TLS transport:
+        # data that arrives in the same read as the client's TLS 1.3 Finished
+        # is answered over the plain transport (legacy race, CHANGES.md F-03).
+        await asyncio.sleep(0.1)
 
-    reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+        writer.write(
+            b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
+        )  # New Stream
+        await writer.drain()
+        await asyncio.sleep(0.1)
+        features = await reader.read(4096)
+        assert b"<mechanisms" in features and b"starttls" not in features  # already on TLS
 
-    writer.write(
-        b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
-    )  # Start stream
-    await writer.drain()
+        writer.write(
+            b'<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="PLAIN">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>'
+        )  # Send Auth
+        await writer.drain()
+        await asyncio.sleep(0.1)
+        assert await reader.read(4096) == b'<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>'
 
-    await asyncio.sleep(0.1)
-
-    writer.write(
-        b"<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>"
-    )  # Send StartTLS
-    await writer.drain()
-
-    await asyncio.sleep(0.1)
-
-    # Below will upgrade connection to TLS then callback to "do_stuff_after_start_tls"
-    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    ssl_context.check_hostname = False
-    ssl_context.load_verify_locations(cafile=bumper.ca_cert)
-    loop = asyncio.get_event_loop()
-    transport = writer.transport
-    protocol = writer.transport.get_protocol()
-    new_transport = await loop.start_tls(
-        transport, protocol, ssl_context, server_side=False
-    )
-    protocol._stream_reader = asyncio.StreamReader(loop=loop)
-    protocol._client_connected_cb = do_stuff_after_start_tls
-    protocol.connection_made(new_transport)
+        writer.close()
 
     print(l)
+    xmpp_server.disconnect()
+    await asyncio.gather(xmpp_server.server_coro, return_exceptions=True)  # let serve_forever close the socket
 
 
 async def test_client_init(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -339,7 +342,7 @@ async def test_client_init(*args, **kwargs):
 
 
 async def test_bot_connect(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -383,7 +386,7 @@ async def test_bot_connect(*args, **kwargs):
 
 
 async def test_bot_init(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -457,7 +460,7 @@ async def test_bot_init(*args, **kwargs):
 
 
 async def test_ping_server(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -480,7 +483,7 @@ async def test_ping_server(*args, **kwargs):
 
 async def test_ping_client_to_client(*args, **kwargs):
 
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)
@@ -524,7 +527,7 @@ async def test_ping_client_to_client(*args, **kwargs):
 
 
 async def test_client_send_iq(*args, **kwargs):
-    test_transport = asyncio.Transport()
+    test_transport = mock.Mock(spec=asyncio.Transport)
     test_transport.get_extra_info = mock.Mock(return_value=mock_transport_extra_info())
     test_transport.write = mock.Mock(return_value=return_send_data)
     xmppclient = bumper.xmppserver.XMPPAsyncClient(test_transport)

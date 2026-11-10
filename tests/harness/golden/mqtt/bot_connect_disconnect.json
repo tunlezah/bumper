@@ -1,0 +1,31 @@
+{
+  "connack": "Success",
+  "device_list_after_disconnect": [
+    {
+      "class": "ls1ok3",
+      "company": "eco-ng",
+      "did": "E2001",
+      "mqtt_connection": false,
+      "name": "botsn_E2001",
+      "nick": "",
+      "resource": "wC3g",
+      "xmpp_connection": false
+    }
+  ],
+  "device_list_connected": [
+    {
+      "class": "ls1ok3",
+      "company": "eco-ng",
+      "did": "E2001",
+      "mqtt_connection": true,
+      "name": "botsn_E2001",
+      "nick": "",
+      "resource": "wC3g",
+      "xmpp_connection": false
+    }
+  ],
+  "status_rows_connected": [
+    "<TR>\n            <TD>botsn_E2001</TD>\n            <TD>E2001@ls1ok3/wC3g</TD>       \n            <TD  class=\"table-success\" > connected </TD>\n        </TR>",
+    "<TR>\n            <TD>botsn_E2001</TD>\n            <TD></TD>\n            <TD>ls1ok3</TD>\n            <TD>E2001</TD>\n            <TD>wC3g </TD>\n            <TD>eco-ng </TD>\n            \n            <TD  class=\"table-success\" > True </TD>\n            <TD > False</TD>\n            <TD> <button type=\"button\" class=\"btn btn-outline-danger btn-sm\" onclick=\"removeBot('E2001');\">Remove</button> </TD>\n        </TR>"
+  ]
+}

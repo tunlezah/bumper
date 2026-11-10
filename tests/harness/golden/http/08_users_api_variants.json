@@ -1,0 +1,127 @@
+{
+  "description": "users.do branches that need no bot, plus GET and malformed bodies.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users GET"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoMsgNew",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "ip": "127.0.0.1",
+          "port": 5223,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users FindBest EcoMsgNew"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoUpdate",
+            "todo": "FindBest"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "ip": "47.88.66.164",
+          "port": 8005,
+          "result": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users FindBest EcoUpdate"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "todo": "Nothing"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {},
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users unknown todo"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "service": "EcoMsgNew"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users missing todo"
+    },
+    {
+      "request": {
+        "body": {
+          "content_type": "application/json",
+          "raw": "{bad json"
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users malformed json"
+    }
+  ]
+}

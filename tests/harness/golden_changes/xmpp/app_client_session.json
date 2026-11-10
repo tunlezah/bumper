@@ -1,0 +1,78 @@
+{
+  "changes": [
+    "C-005"
+  ],
+  "expected": [
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><starttls xmlns=\"urn:ietf:params:xml:ns:xmpp-tls\"><required/></starttls><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open"
+    },
+    {
+      "received": "<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "sent": "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>",
+      "step": "starttls"
+    },
+    {
+      "step": "tls handshake",
+      "tls_version": "TLSv1.3"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><mechanisms xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>PLAIN</mechanism></mechanisms></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open after TLS"
+    },
+    {
+      "received": "<success xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"/>",
+      "sent": "<auth xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\" mechanism=\"PLAIN\">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>",
+      "step": "sasl auth"
+    },
+    {
+      "received": "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" xmlns=\"jabber:client\" version=\"1.0\" id=\"1\" from=\"ecouser.net\"><stream:features><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"/><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></stream:features>",
+      "sent": "<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>",
+      "step": "stream open after auth"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"5E9872D5-547E-49AF-AE51-9EFAA282F952\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><jid>fuid_tmpuser@ecouser.net/IOSF53D07BA</jid></bind></iq>",
+      "sent": "<iq type=\"set\" id=\"5E9872D5-547E-49AF-AE51-9EFAA282F952\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>IOSF53D07BA</resource></bind></iq>",
+      "step": "bind"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"FA1041E7-AA27-43DD-BAA3-64DE2DE56AA3\" /><iq from='ecouser.net' to='fuid_tmpuser@ecouser.net/IOSF53D07BA' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>",
+      "sent": "<iq type=\"set\" id=\"FA1041E7-AA27-43DD-BAA3-64DE2DE56AA3\"><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></iq>",
+      "step": "session"
+    },
+    {
+      "received": "<presence to=\"fuid_tmpuser@ecouser.net/IOSF53D07BA\"> dummy </presence>",
+      "sent": "<presence type=\"available\"/>",
+      "step": "presence available"
+    },
+    {
+      "received": "<iq type=\"result\" id=\"ping-1\" from=\"ecouser.net\" />",
+      "sent": "<iq type=\"get\" id=\"ping-1\" to=\"ecouser.net\"><ping xmlns=\"urn:xmpp:ping\"/></iq>",
+      "step": "ping server"
+    },
+    {
+      "received": "<iq type=\"error\" id=\"EE0XQ-2\"><error type=\"cancel\" code=\"501\"><feature-not-implemented xmlns=\"urn:ietf:params:xml:ns:xmpp-stanzas\"/></error></iq>",
+      "sent": "<iq id=\"EE0XQ-2\" type=\"get\"><query xmlns=\"jabber:iq:roster\" ></query></iq>",
+      "step": "roster query (not implemented)"
+    },
+    {
+      "received": "<iq type=\"error\" id=\"EE0XQ-3\"><error type=\"cancel\" code=\"501\"><feature-not-implemented xmlns=\"urn:ietf:params:xml:ns:xmpp-stanzas\"/></error></iq>",
+      "sent": "<iq id=\"EE0XQ-3\" type=\"get\" to=\"ecouser.net\"><query xmlns=\"http://jabber.org/protocol/disco#info\"/></iq>",
+      "step": "disco#info query (not implemented)"
+    },
+    {
+      "received": "",
+      "sent": "<badstr />",
+      "step": "unknown element"
+    },
+    {
+      "closed_by_server": true,
+      "received": "</stream:stream>",
+      "sent": "</stream:stream>",
+      "step": "close stream"
+    }
+  ],
+  "reason": "Element.getchildren() was removed in Python 3.9; with list(element) the code behaves as it did on Python 3.7 (golden_reference/py37)."
+}

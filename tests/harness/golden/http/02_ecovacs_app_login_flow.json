@@ -1,0 +1,273 @@
+{
+  "description": "Ecovacs (non-Home) app: login -> checkLogin -> getAuthCode -> loginByItToken -> logout.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/login",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<hex32>",
+            "country": "us",
+            "email": "null@null.com",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "login"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin?accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<var:token>",
+            "country": "us",
+            "email": "null@null.com",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkLogin with issued token"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "authCode": "us_<hex32>",
+            "ecovacsUid": "fuid_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getAuthCode"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "authCode": "<var:authcode>",
+            "ecovacsUid": "fuid_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getAuthCode again returns the existing code"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "country": "US",
+            "last": "",
+            "realm": "ecouser.net",
+            "resource": "dev_1234",
+            "todo": "loginByItToken",
+            "token": "${authcode}",
+            "userId": "fuid_tmpuser"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "resource": "dev_1234",
+          "result": "ok",
+          "todo": "result",
+          "token": "<var:authcode>",
+          "userId": "fuid_tmpuser"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users loginByItToken with userId"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "country": "US",
+            "last": "",
+            "realm": "ecouser.net",
+            "resource": "dev_1234",
+            "todo": "loginByItToken",
+            "token": "us_00000000000000000000000000000000",
+            "userId": "fuid_tmpuser"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {},
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users loginByItToken with userId and wrong code"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getUserAccountInfo",
+        "port": "https"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "getUserAccountInfo for non-Home app"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkAgreement",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [],
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkAgreement"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/logout?accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "logout"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin?accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<hex32>",
+            "country": "us",
+            "email": "null@null.com",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkLogin with revoked token issues a new one"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin",
+        "port": "https"
+      },
+      "response": {
+        "body": null,
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkLogin without accessToken"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/logout",
+        "port": "https"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "logout without accessToken"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_unknown/ios/1/0/0/user/logout?accessToken=nothing",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "logout unknown device"
+    }
+  ]
+}

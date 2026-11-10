@@ -1,0 +1,95 @@
+{
+  "description": "Unknown paths, the invalid restart service and method handling on the root app.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/does/not/exist",
+        "port": "http"
+      },
+      "response": {
+        "body_text": "404: Not Found",
+        "content_type": "text/plain; charset=utf-8",
+        "status": 404
+      },
+      "step": "unknown root path"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {}
+        },
+        "method": "POST",
+        "path": "/api/nothing/here.do",
+        "port": "https"
+      },
+      "response": {
+        "body_text": "404: Not Found",
+        "content_type": "text/plain; charset=utf-8",
+        "status": 404
+      },
+      "step": "unknown api path"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/nothing",
+        "port": "https"
+      },
+      "response": {
+        "body_text": "404: Not Found",
+        "content_type": "text/plain; charset=utf-8",
+        "status": 404
+      },
+      "step": "unknown v1 path"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {}
+        },
+        "method": "POST",
+        "path": "/",
+        "port": "http"
+      },
+      "response": {
+        "body_text": "405: Method Not Allowed",
+        "content_type": "text/plain; charset=utf-8",
+        "status": 405
+      },
+      "step": "POST to status page"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/restart_Nothing",
+        "port": "http"
+      },
+      "response": {
+        "body": {
+          "status": "invalid service"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "restart unknown service"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "HEAD",
+        "path": "/restart_Nothing",
+        "port": "http"
+      },
+      "response": {
+        "body_text": "",
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "restart unknown service HEAD"
+    }
+  ]
+}

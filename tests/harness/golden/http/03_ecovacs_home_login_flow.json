@@ -1,0 +1,547 @@
+{
+  "description": "Ecovacs Home app (global_e): login -> v2 checkLogin -> auth code -> loginByItToken -> OAuth callback -> account info.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/login",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<hex32>",
+            "country": "us",
+            "email": "null@null.com",
+            "loginName": "fusername_tmpuser",
+            "mobile": null,
+            "ucUid": "fuid_tmpuser",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "login (Home)"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v2/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkLogin?accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<var:token>",
+            "country": "us",
+            "email": "null@null.com",
+            "loginName": "fusername_tmpuser",
+            "mobile": null,
+            "ucUid": "fuid_tmpuser",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "v2 checkLogin with issued token"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkLogin?accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "accessToken": "<var:token>",
+            "country": "us",
+            "email": "null@null.com",
+            "loginName": "fusername_tmpuser",
+            "mobile": null,
+            "ucUid": "fuid_tmpuser",
+            "uid": "fuid_tmpuser",
+            "username": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "v1 checkLogin with issued token"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/global/auth/getAuthCode?uid=fuid_tmpuser&deviceId=dev_home_5678&accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "authCode": "us_<hex32>",
+            "ecovacsUid": "fuid_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "global auth getAuthCode"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "authCode": "<var:authcode>",
+            "ecovacsUid": "fuid_tmpuser"
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "private getAuthCode as Home app returns the same code"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "country": "US",
+            "edition": "ECOGLOBLE",
+            "last": "",
+            "org": "ECOWW",
+            "resource": "dev_home_5678",
+            "todo": "loginByItToken",
+            "token": "${authcode}"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "resource": "dev_home_5678",
+          "result": "ok",
+          "todo": "result",
+          "token": "<var:token>",
+          "userId": "tmpuser"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users loginByItToken (Home, json)"
+    },
+    {
+      "request": {
+        "body": {
+          "form": {
+            "country": "US",
+            "edition": "ECOGLOBLE",
+            "last": "",
+            "org": "ECOWW",
+            "resource": "dev_home_5678",
+            "todo": "loginByItToken",
+            "token": "${authcode}"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "resource": "dev_home_5678",
+          "result": "ok",
+          "todo": "result",
+          "token": "<var:token>",
+          "userId": "tmpuser"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users loginByItToken (Home, form)"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "country": "US",
+            "edition": "ECOGLOBLE",
+            "last": "",
+            "org": "ECOWW",
+            "resource": "dev_home_5678",
+            "todo": "loginByItToken",
+            "token": "us_ffffffffffffffffffffffffffffffff"
+          }
+        },
+        "method": "POST",
+        "path": "/api/users/user.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "users loginByItToken (Home) unknown code"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "itToken": "${authcode}",
+            "todo": "OLoginByITToken"
+          }
+        },
+        "method": "POST",
+        "path": "/newauth.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "authCode": "<var:authcode>",
+          "result": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "newauth.do echoes itToken"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/appsvr/oauth_callback?code=${authcode}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": 0,
+          "data": {
+            "access_token": "<hex32>",
+            "expire_at": "<ms-epoch now+357h>",
+            "refresh_token": "<hex32>",
+            "userId": "tmpuser"
+          },
+          "ret": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr oauth_callback"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/appsvr/oauth_callback?code=${authcode}",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": 0,
+          "data": {
+            "access_token": "<hex32>",
+            "expire_at": "<ms-epoch now+357h>",
+            "refresh_token": "<hex32>",
+            "userId": "tmpuser"
+          },
+          "ret": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr oauth_callback again returns the stored grant"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/appsvr/oauth_callback?code=us_unknown",
+        "port": "https"
+      },
+      "response": {
+        "error": "connection closed without response"
+      },
+      "step": "appsvr oauth_callback unknown code"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getUserAccountInfo",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "email": "null@null.com",
+            "hasMobile": "N",
+            "hasPassword": "Y",
+            "loginName": "fusername_tmpuser",
+            "mobile": null,
+            "obfuscatedMobile": null,
+            "uid": "fuid_tmpuser",
+            "userName": "fusername_tmpuser"
+          },
+          "msg": "操作成功",
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getUserAccountInfo (Home)"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getUserMenuInfo",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [
+            {
+              "menuItems": [
+                {
+                  "clickAction": 1,
+                  "clickUri": "https://ecovacs.zendesk.com/hc/en-us",
+                  "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/2019121603180741b73907046e742b80e8fe4a90fe2498.png",
+                  "menuId": "20191216031849_4d744630f7ad2f5208a4b8051be61d10",
+                  "menuName": "Help & Feedback",
+                  "paramsJson": ""
+                }
+              ],
+              "menuPositionKey": "A_FIRST"
+            },
+            {
+              "menuItems": [
+                {
+                  "clickAction": 3,
+                  "clickUri": "robotShare",
+                  "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/2019121603284185e632ec6c5da10bd82119d7047a1f9e.png",
+                  "menuId": "20191216032853_5fac4cc9cbd0e166dfa951485d1d8cc4",
+                  "menuName": "Share Robot",
+                  "paramsJson": ""
+                }
+              ],
+              "menuPositionKey": "B_SECOND"
+            },
+            {
+              "menuItems": [
+                {
+                  "clickAction": 3,
+                  "clickUri": "config",
+                  "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/201912160325324068da4e4a09b8c3973db162e84784d5.png",
+                  "menuId": "20191216032545_ebea0fbb4cb02d9c2fec5bdf3371bc2d",
+                  "menuName": "Settings",
+                  "paramsJson": ""
+                }
+              ],
+              "menuPositionKey": "C_THIRD"
+            },
+            {
+              "menuItems": [
+                {
+                  "clickAction": 1,
+                  "clickUri": "https://bumper.ecovacs.com/",
+                  "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/201912160325324068da4e4a09b8c3973db162e84784d5.png",
+                  "menuId": "20191216032545_ebea0fbb4cb02d9c2fec5bdf3371bc2c",
+                  "menuName": "Bumper Status",
+                  "paramsJson": ""
+                }
+              ],
+              "menuPositionKey": "D_FOURTH"
+            }
+          ],
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "getUserMenuInfo"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkAgreement",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [
+            {
+              "force": "N",
+              "id": "20180804040641_7d746faf18b8cb22a50d145598fe4c90",
+              "type": "USER",
+              "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN",
+              "version": "1.01"
+            },
+            {
+              "force": "N",
+              "id": "20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac",
+              "type": "PRIVACY",
+              "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN",
+              "version": "1.01"
+            }
+          ],
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkAgreement (Home)"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {}
+        },
+        "method": "POST",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkAgreementBatch",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": [
+            {
+              "force": "N",
+              "id": "20180804040641_7d746faf18b8cb22a50d145598fe4c90",
+              "type": "USER",
+              "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN",
+              "version": "1.01"
+            },
+            {
+              "force": "N",
+              "id": "20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac",
+              "type": "PRIVACY",
+              "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN",
+              "version": "1.01"
+            }
+          ],
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "checkAgreementBatch (Home)"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "acceptIds": [
+              "20180804040641_7d746faf18b8cb22a50d145598fe4c90"
+            ]
+          }
+        },
+        "method": "POST",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/acceptAgreementBatch",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": null,
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "acceptAgreementBatch"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/changeArea",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "isNeedReLogin": "N"
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "changeArea"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/queryChangeArea",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": "0000",
+          "data": {
+            "isNeedReLogin": "N"
+          },
+          "msg": "操作成功",
+          "success": true,
+          "time": "<ms-epoch now-3h>"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "queryChangeArea"
+    }
+  ]
+}

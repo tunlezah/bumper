@@ -1,0 +1,270 @@
+{
+  "_comment": [
+    "Ordered HTTP scenarios for test_http_golden.py. Scenarios run in file order against one",
+    "pristine Bumper instance; steps inside a scenario run in order and may depend on each other.",
+    "Step fields:",
+    "  method, path, port ('http' = plain config server 8007, 'https' = TLS config server 443)",
+    "  body: {json: ...} | {form: {...}} | {raw: '...', content_type: '...'}",
+    "  capture: {var: 'dotted.path'} stores a raw response value; later steps use ${var} in path/body,",
+    "           and the normaliser reports the value as <var:NAME> where it reappears.",
+    "  record: 'digest' replaces the body's 'data' field by a sha256 of its canonical JSON (large static data)",
+    "  mqtt_connect: {handle, client_id, username, password} connects a fake bot with paho (no HTTP)",
+    "  mqtt_disconnect: handle, with optional settle seconds",
+    "Request bodies come from tests/test_confserver.py and the plugin handlers in bumper/plugins/."
+  ],
+  "scenarios": [
+    {
+      "id": "01_pristine_state",
+      "description": "A fresh instance: empty device lists and the status page with only the helperbot session.",
+      "steps": [
+        {"name": "users GetDeviceList (empty)", "method": "POST", "port": "http", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "appsvr GetGlobalDeviceList (empty)", "method": "POST", "port": "https", "path": "/api/appsvr/app.do",
+         "body": {"json": {"aliliving": false, "appVer": "1.1.6", "auth": {"realm": "ecouser.net", "resource": "ECOGLOBLEac5ae987", "token": "token_1234", "userid": "testuser", "with": "users"}, "channel": "google_play", "defaultLang": "en", "lang": "en", "platform": "Android", "todo": "GetGlobalDeviceList", "userid": "testuser"}}},
+        {"name": "status page", "method": "GET", "port": "http", "path": "/"},
+        {"name": "status page HEAD", "method": "HEAD", "port": "http", "path": "/"},
+        {"name": "status page over TLS", "method": "GET", "port": "https", "path": "/"}
+      ]
+    },
+    {
+      "id": "02_ecovacs_app_login_flow",
+      "description": "Ecovacs (non-Home) app: login -> checkLogin -> getAuthCode -> loginByItToken -> logout.",
+      "steps": [
+        {"name": "login", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/login",
+         "capture": {"token": "data.accessToken"}},
+        {"name": "checkLogin with issued token", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin?accessToken=${token}"},
+        {"name": "getAuthCode", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}",
+         "capture": {"authcode": "data.authCode"}},
+        {"name": "getAuthCode again returns the existing code", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}"},
+        {"name": "users loginByItToken with userId", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"country": "US", "last": "", "realm": "ecouser.net", "resource": "dev_1234", "todo": "loginByItToken", "token": "${authcode}", "userId": "fuid_tmpuser"}}},
+        {"name": "users loginByItToken with userId and wrong code", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"country": "US", "last": "", "realm": "ecouser.net", "resource": "dev_1234", "todo": "loginByItToken", "token": "us_00000000000000000000000000000000", "userId": "fuid_tmpuser"}}},
+        {"name": "getUserAccountInfo for non-Home app", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getUserAccountInfo"},
+        {"name": "checkAgreement", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkAgreement"},
+        {"name": "logout", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/logout?accessToken=${token}"},
+        {"name": "checkLogin with revoked token issues a new one", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin?accessToken=${token}"},
+        {"name": "checkLogin without accessToken", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/checkLogin"},
+        {"name": "logout without accessToken", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/logout"},
+        {"name": "logout unknown device", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_unknown/ios/1/0/0/user/logout?accessToken=nothing"}
+      ]
+    },
+    {
+      "id": "03_ecovacs_home_login_flow",
+      "description": "Ecovacs Home app (global_e): login -> v2 checkLogin -> auth code -> loginByItToken -> OAuth callback -> account info.",
+      "steps": [
+        {"name": "login (Home)", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/login",
+         "capture": {"token": "data.accessToken"}},
+        {"name": "v2 checkLogin with issued token", "method": "GET", "port": "https", "path": "/v2/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkLogin?accessToken=${token}"},
+        {"name": "v1 checkLogin with issued token", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkLogin?accessToken=${token}"},
+        {"name": "global auth getAuthCode", "method": "GET", "port": "https", "path": "/v1/global/auth/getAuthCode?uid=fuid_tmpuser&deviceId=dev_home_5678&accessToken=${token}",
+         "capture": {"authcode": "data.authCode"}},
+        {"name": "private getAuthCode as Home app returns the same code", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getAuthCode?uid=fuid_tmpuser&accessToken=${token}"},
+        {"name": "users loginByItToken (Home, json)", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"country": "US", "edition": "ECOGLOBLE", "last": "", "org": "ECOWW", "resource": "dev_home_5678", "todo": "loginByItToken", "token": "${authcode}"}}},
+        {"name": "users loginByItToken (Home, form)", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"form": {"country": "US", "edition": "ECOGLOBLE", "last": "", "org": "ECOWW", "resource": "dev_home_5678", "todo": "loginByItToken", "token": "${authcode}"}}},
+        {"name": "users loginByItToken (Home) unknown code", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"country": "US", "edition": "ECOGLOBLE", "last": "", "org": "ECOWW", "resource": "dev_home_5678", "todo": "loginByItToken", "token": "us_ffffffffffffffffffffffffffffffff"}}},
+        {"name": "newauth.do echoes itToken", "method": "POST", "port": "https", "path": "/newauth.do",
+         "body": {"json": {"itToken": "${authcode}", "todo": "OLoginByITToken"}}},
+        {"name": "appsvr oauth_callback", "method": "GET", "port": "https", "path": "/api/appsvr/oauth_callback?code=${authcode}",
+         "capture": {"oauth_access": "data.access_token", "oauth_refresh": "data.refresh_token"}},
+        {"name": "appsvr oauth_callback again returns the stored grant", "method": "GET", "port": "https", "path": "/api/appsvr/oauth_callback?code=${authcode}"},
+        {"name": "appsvr oauth_callback unknown code", "method": "GET", "port": "https", "path": "/api/appsvr/oauth_callback?code=us_unknown"},
+        {"name": "getUserAccountInfo (Home)", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getUserAccountInfo"},
+        {"name": "getUserMenuInfo", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/getUserMenuInfo"},
+        {"name": "checkAgreement (Home)", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkAgreement"},
+        {"name": "checkAgreementBatch (Home)", "method": "POST", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/checkAgreementBatch",
+         "body": {"json": {}}},
+        {"name": "acceptAgreementBatch", "method": "POST", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/acceptAgreementBatch",
+         "body": {"json": {"acceptIds": ["20180804040641_7d746faf18b8cb22a50d145598fe4c90"]}}},
+        {"name": "changeArea", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/changeArea"},
+        {"name": "queryChangeArea", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/user/queryChangeArea"}
+      ]
+    },
+    {
+      "id": "04_auth_code_errors",
+      "description": "getAuthCode without a valid user or token, and with a missing query parameter.",
+      "steps": [
+        {"name": "private getAuthCode unknown device", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_nobody/ios/1/0/0/user/getAuthCode?uid=None&accessToken=None"},
+        {"name": "private getAuthCode known device wrong token", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/getAuthCode?uid=fuid_tmpuser&accessToken=0123456789abcdef0123456789abcdef"},
+        {"name": "global getAuthCode unknown device", "method": "GET", "port": "https", "path": "/v1/global/auth/getAuthCode?uid=None&deviceId=dev_nobody"},
+        {"name": "global getAuthCode without deviceId", "method": "GET", "port": "https", "path": "/v1/global/auth/getAuthCode?uid=None"}
+      ]
+    },
+    {
+      "id": "05_v1_static_endpoints",
+      "description": "v1 private endpoints that return fixed bodies (apart from timestamps).",
+      "steps": [
+        {"name": "checkVersion", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/common/checkVersion"},
+        {"name": "checkAPPVersion", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/checkAPPVersion"},
+        {"name": "uploadDeviceInfo", "method": "POST", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/uploadDeviceInfo",
+         "body": {"json": {"deviceId": "dev_home_5678", "platform": "Android"}}},
+        {"name": "getSystemReminder", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getSystemReminder"},
+        {"name": "getConfig with keys", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getConfig?keys=SHOW_SHOPPING_MALL,OPEN_REALTIME_MAP"},
+        {"name": "getConfig without keys", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getConfig"},
+        {"name": "getAreas", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getAreas", "record": "digest"},
+        {"name": "getAgreementURLBatch", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getAgreementURLBatch"},
+        {"name": "getTimestamp", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/common/getTimestamp"},
+        {"name": "getAdByPositionType", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/ad/getAdByPositionType"},
+        {"name": "getBootScreen", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/ad/getBootScreen"},
+        {"name": "homePageAlert", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/campaign/homePageAlert"},
+        {"name": "hasUnreadMsg", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/message/hasUnreadMsg"},
+        {"name": "getMsgList", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/message/getMsgList"},
+        {"name": "getCnWapShopConfig", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/shop/getCnWapShopConfig"},
+        {"name": "getSuggestionSetting", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_home_5678/global_e/1.6.3/c_Android/1/userSetting/getSuggestionSetting"},
+        {"name": "checkVersion over plain HTTP via POST", "method": "POST", "port": "http", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/common/checkVersion",
+         "body": {"json": {}}}
+      ]
+    },
+    {
+      "id": "06_portal_static_endpoints",
+      "description": "Portal API endpoints with fixed bodies, pim data and file downloads.",
+      "steps": [
+        {"name": "neng hasUnreadMsg", "method": "POST", "port": "https", "path": "/api/neng/message/hasUnreadMsg",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "ecoglobe", "token": "us_token", "userid": "user123", "with": "users"}, "count": 20}}},
+        {"name": "neng getShareMsgs", "method": "POST", "port": "https", "path": "/api/neng/message/getShareMsgs",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "ecoglobe", "token": "us_token", "userid": "user123", "with": "users"}, "count": 20}}},
+        {"name": "neng getlist", "method": "POST", "port": "https", "path": "/api/neng/message/getlist",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "ecoglobe", "token": "us_token", "userid": "user123", "with": "users"}, "count": 20}}},
+        {"name": "ecms ad res", "method": "GET", "port": "https", "path": "/api/ecms/app/ad/res"},
+        {"name": "rapp map get", "method": "POST", "port": "https", "path": "/api/rapp/sds/user/data/map/get",
+         "body": {"json": {"did": "E1001", "mid": "ls1ok3"}}},
+        {"name": "pim getProductIotMap", "method": "POST", "port": "https", "path": "/api/pim/product/getProductIotMap", "record": "digest"},
+        {"name": "pim getConfignetAll", "method": "GET", "port": "https", "path": "/api/pim/product/getConfignetAll", "record": "digest"},
+        {"name": "pim getConfigGroups", "method": "GET", "port": "https", "path": "/api/pim/product/getConfigGroups", "record": "digest"},
+        {"name": "pim getErrDetail", "method": "GET", "port": "https", "path": "/api/pim/dictionary/getErrDetail"},
+        {"name": "pim product config batch (known pid is listed twice, unknown once)", "method": "POST", "port": "https", "path": "/api/pim/product/software/config/batch",
+         "body": {"json": {"pids": ["5e14196a6e71b80001b60fda", "0000000000000000000000ff"]}}},
+        {"name": "pim product config batch malformed", "method": "POST", "port": "https", "path": "/api/pim/product/software/config/batch",
+         "body": {"raw": "{not json", "content_type": "application/json"}},
+        {"name": "pim file get", "method": "GET", "port": "https", "path": "/api/pim/file/get/5ba4a2cb6c2f120001c32839"},
+        {"name": "upload global file", "method": "GET", "port": "https", "path": "/upload/global/2019/12/16/2019121603180741b73907046e742b80e8fe4a90fe2498.png"}
+      ]
+    },
+    {
+      "id": "07_lookup_and_newauth",
+      "description": "Bot-facing lookup.do (plain HTTP) and newauth.do, including malformed bodies.",
+      "steps": [
+        {"name": "lookup EcoMsgNew json", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"json": {"todo": "FindBest", "service": "EcoMsgNew"}}},
+        {"name": "lookup EcoUpdate json", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"json": {"todo": "FindBest", "service": "EcoUpdate"}}},
+        {"name": "lookup EcoMsgNew form", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"form": {"todo": "FindBest", "service": "EcoMsgNew"}}},
+        {"name": "lookup unknown service", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"json": {"todo": "FindBest", "service": "Other"}}},
+        {"name": "lookup unknown todo", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"json": {"todo": "Nothing"}}},
+        {"name": "lookup missing todo", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"json": {"service": "EcoMsgNew"}}},
+        {"name": "lookup malformed json", "method": "POST", "port": "http", "path": "/lookup.do", "body": {"raw": "{bad json", "content_type": "application/json"}},
+        {"name": "lookup with GET is not allowed", "method": "GET", "port": "http", "path": "/lookup.do"},
+        {"name": "lookup over TLS", "method": "POST", "port": "https", "path": "/lookup.do", "body": {"json": {"todo": "FindBest", "service": "EcoMsgNew"}}},
+        {"name": "newauth json", "method": "POST", "port": "http", "path": "/newauth.do", "body": {"json": {"itToken": "us_0123456789abcdef0123456789abcdef", "todo": "OLoginByITToken"}}},
+        {"name": "newauth form", "method": "POST", "port": "http", "path": "/newauth.do", "body": {"form": {"itToken": "some-token", "todo": "OLoginByITToken"}}},
+        {"name": "newauth missing itToken", "method": "POST", "port": "http", "path": "/newauth.do", "body": {"json": {"todo": "OLoginByITToken"}}},
+        {"name": "newauth malformed", "method": "POST", "port": "http", "path": "/newauth.do", "body": {"raw": "not json at all", "content_type": "text/plain"}}
+      ]
+    },
+    {
+      "id": "08_users_api_variants",
+      "description": "users.do branches that need no bot, plus GET and malformed bodies.",
+      "steps": [
+        {"name": "users GET", "method": "GET", "port": "https", "path": "/api/users/user.do"},
+        {"name": "users FindBest EcoMsgNew", "method": "POST", "port": "https", "path": "/api/users/user.do", "body": {"json": {"todo": "FindBest", "service": "EcoMsgNew"}}},
+        {"name": "users FindBest EcoUpdate", "method": "POST", "port": "https", "path": "/api/users/user.do", "body": {"json": {"todo": "FindBest", "service": "EcoUpdate"}}},
+        {"name": "users unknown todo", "method": "POST", "port": "https", "path": "/api/users/user.do", "body": {"json": {"todo": "Nothing"}}},
+        {"name": "users missing todo", "method": "POST", "port": "https", "path": "/api/users/user.do", "body": {"json": {"service": "EcoMsgNew"}}},
+        {"name": "users malformed json", "method": "POST", "port": "https", "path": "/api/users/user.do", "body": {"raw": "{bad json", "content_type": "application/json"}}
+      ]
+    },
+    {
+      "id": "09_devmanager_without_bot",
+      "description": "iot/dim devmanager and lg log.do when the target bot does not exist.",
+      "steps": [
+        {"name": "iot PollSCResult", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do", "body": {"json": {"td": "PollSCResult"}}},
+        {"name": "iot HasUnreadMsg", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do", "body": {"json": {"td": "HasUnreadMsg"}}},
+        {"name": "iot PreWifiConfig", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do", "body": {"json": {"td": "PreWifiConfig"}}},
+        {"name": "iot unknown td", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do", "body": {"json": {"td": "Unknown"}}},
+        {"name": "iot command for unknown bot", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "ECOGLOBLEac5ae987", "token": "token_1234", "userid": "testuser", "with": "users"}, "cmdName": "GetChargeState", "payload": "<ctl/>", "payloadType": "x", "td": "q", "toId": "did_missing", "toRes": "res_1234", "toType": "ls1ok3"}}},
+        {"name": "iot malformed", "method": "POST", "port": "https", "path": "/api/iot/devmanager.do", "body": {"raw": "{oops", "content_type": "application/json"}},
+        {"name": "dim PollSCResult", "method": "POST", "port": "https", "path": "/api/dim/devmanager.do", "body": {"json": {"td": "PollSCResult"}}},
+        {"name": "dim HasUnreadMsg", "method": "POST", "port": "https", "path": "/api/dim/devmanager.do", "body": {"json": {"td": "HasUnreadMsg"}}},
+        {"name": "dim ReceiveShareDevice", "method": "POST", "port": "https", "path": "/api/dim/devmanager.do", "body": {"json": {"td": "ReceiveShareDevice"}}},
+        {"name": "dim command for unknown bot", "method": "POST", "port": "https", "path": "/api/dim/devmanager.do",
+         "body": {"json": {"cmdName": "GetChargeState", "payload": "<ctl/>", "payloadType": "x", "td": "q", "toId": "did_missing", "toRes": "res_1234", "toType": "ls1ok3"}}},
+        {"name": "lg GetCleanLogs for unknown bot", "method": "POST", "port": "https", "path": "/api/lg/log.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "ECOGLOBLEac5ae987", "token": "token_1234", "userid": "testuser", "with": "users"}, "did": "did_missing", "resource": "res_1234", "td": "GetCleanLogs"}}},
+        {"name": "lg malformed", "method": "POST", "port": "https", "path": "/api/lg/log.do", "body": {"raw": "[]", "content_type": "application/json"}}
+      ]
+    },
+    {
+      "id": "10_appsvr_variants",
+      "description": "appsvr app.do branches without bots and the service list.",
+      "steps": [
+        {"name": "appsvr GET", "method": "GET", "port": "https", "path": "/api/appsvr/app.do"},
+        {"name": "appsvr unknown todo", "method": "POST", "port": "https", "path": "/api/appsvr/app.do", "body": {"json": {"todo": "GetShareDeviceList"}}},
+        {"name": "appsvr GetGlobalDeviceList form", "method": "POST", "port": "https", "path": "/api/appsvr/app.do", "body": {"form": {"todo": "GetGlobalDeviceList", "userid": "testuser"}}},
+        {"name": "appsvr malformed", "method": "POST", "port": "https", "path": "/api/appsvr/app.do", "body": {"raw": "{", "content_type": "application/json"}},
+        {"name": "appsvr service list", "method": "GET", "port": "https", "path": "/api/appsvr/service/list"}
+      ]
+    },
+    {
+      "id": "11_bots_via_mqtt_then_http",
+      "description": "Bots register over MQTT; device lists, nicknames, the status page and removal over HTTP.",
+      "steps": [
+        {"name": "MQTT bot E1001 (ls1ok3, on the Home product list) connects", "mqtt_connect": {"handle": "bot1", "client_id": "E1001@ls1ok3/wC3g", "username": "botsn_E1001", "password": "x"}},
+        {"name": "MQTT bot E1002 (class not on the Home product list) connects", "mqtt_connect": {"handle": "bot2", "client_id": "E1002@zz9zz9/res2", "username": "botsn_E1002", "password": "x"}},
+        {"name": "users GetDeviceList", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "appsvr GetGlobalDeviceList", "method": "POST", "port": "https", "path": "/api/appsvr/app.do",
+         "body": {"json": {"aliliving": false, "appVer": "1.1.6", "auth": {"realm": "ecouser.net", "resource": "ECOGLOBLEac5ae987", "token": "token_1234", "userid": "testuser", "with": "users"}, "channel": "google_play", "defaultLang": "en", "lang": "en", "platform": "Android", "todo": "GetGlobalDeviceList", "userid": "testuser"}}},
+        {"name": "users SetDeviceNick", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "SetDeviceNick", "nick": "Kitchen", "did": "E1001"}}},
+        {"name": "users AddOneDevice", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "AddOneDevice", "nick": "Hallway", "did": "E1002"}}},
+        {"name": "users GetDeviceList shows nicknames", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "status page with bots and sessions", "method": "GET", "port": "http", "path": "/"},
+        {"name": "MQTT bot E1002 disconnects", "mqtt_disconnect": "bot2", "settle": 1.0},
+        {"name": "users GetDeviceList after E1002 disconnected", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "dim command for a known bot that is not MQTT connected", "method": "POST", "port": "https", "path": "/api/dim/devmanager.do",
+         "body": {"json": {"cmdName": "GetChargeState", "payload": "<ctl/>", "payloadType": "x", "td": "q", "toId": "E1002", "toRes": "res2", "toType": "zz9zz9"}}},
+        {"name": "users DeleteOneDevice E1002", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "DeleteOneDevice", "did": "E1002"}}},
+        {"name": "remove bot E1001", "method": "GET", "port": "http", "path": "/bot/remove/E1001"},
+        {"name": "remove bot that does not exist", "method": "HEAD", "port": "http", "path": "/bot/remove/E9999"},
+        {"name": "remove client that does not exist", "method": "GET", "port": "http", "path": "/client/remove/res_missing"},
+        {"name": "remove client HEAD", "method": "HEAD", "port": "http", "path": "/client/remove/res_missing"},
+        {"name": "users GetDeviceList after removals", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "MQTT bot E1001 disconnects", "mqtt_disconnect": "bot1", "settle": 2.5}
+      ]
+    },
+    {
+      "id": "12_not_found_and_methods",
+      "description": "Unknown paths, the invalid restart service and method handling on the root app.",
+      "steps": [
+        {"name": "unknown root path", "method": "GET", "port": "http", "path": "/does/not/exist"},
+        {"name": "unknown api path", "method": "POST", "port": "https", "path": "/api/nothing/here.do", "body": {"json": {}}},
+        {"name": "unknown v1 path", "method": "GET", "port": "https", "path": "/v1/private/us/en/dev_1234/ios/1/0/0/user/nothing"},
+        {"name": "POST to status page", "method": "POST", "port": "http", "path": "/", "body": {"json": {}}},
+        {"name": "restart unknown service", "method": "GET", "port": "http", "path": "/restart_Nothing"},
+        {"name": "restart unknown service HEAD", "method": "HEAD", "port": "http", "path": "/restart_Nothing"}
+      ]
+    },
+    {
+      "id": "13_unknown_bot_poisons_device_list",
+      "description": "Legacy quirk: SetDeviceNick for an unknown DID upserts a bot document without a DID, after which GetGlobalDeviceList fails. Runs last because it cannot be undone over HTTP.",
+      "steps": [
+        {"name": "users DeleteOneDevice for unknown bot", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "DeleteOneDevice", "did": "did_missing"}}},
+        {"name": "users SetDeviceNick for unknown bot", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "SetDeviceNick", "nick": "botnick", "did": "did_missing"}}},
+        {"name": "users GetDeviceList now lists a bot without DID", "method": "POST", "port": "https", "path": "/api/users/user.do",
+         "body": {"json": {"auth": {"realm": "ecouser.net", "resource": "dev_1234", "token": "token_1234", "userid": "testuser", "with": "users"}, "todo": "GetDeviceList", "userid": "testuser"}}},
+        {"name": "appsvr GetGlobalDeviceList now fails", "method": "POST", "port": "https", "path": "/api/appsvr/app.do",
+         "body": {"json": {"aliliving": false, "appVer": "1.1.6", "auth": {"realm": "ecouser.net", "resource": "ECOGLOBLEac5ae987", "token": "token_1234", "userid": "testuser", "with": "users"}, "channel": "google_play", "defaultLang": "en", "lang": "en", "platform": "Android", "todo": "GetGlobalDeviceList", "userid": "testuser"}}},
+        {"name": "status page shows the DID-less bot", "method": "GET", "port": "http", "path": "/"}
+      ]
+    }
+  ]
+}

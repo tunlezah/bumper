@@ -1,0 +1,10 @@
+{
+  "changes": [
+    "C-007"
+  ],
+  "expected": {
+    "subscribed iot/atr/+": null,
+    "subscribed iot/atr/+/E2005/ls1ok3/wC3g/+": "iot/atr/DustCaseST/E2005/ls1ok3/wC3g/x"
+  },
+  "reason": "amqtt matches '+' as exactly one topic level, as MQTT requires; the legacy broker's regex matched several."
+}

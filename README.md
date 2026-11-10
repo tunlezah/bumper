@@ -1,4 +1,4 @@
-![License GPLv3](https://img.shields.io/github/license/bmartin5692/bumper.svg?color=brightgreen)
+![License GPLv3](https://img.shields.io/github/license/tunlezah/bumper.svg?color=brightgreen)
 
 # Bumper 
 
@@ -10,12 +10,10 @@ Bumper is a standalone and self-hosted implementation of the central server used
 
 ## Build Status
 
-| Master Branch | Status                                                                 |
-| ------------------- | ---------------------------------------------------------------------- |
-| AppVeyor (Win32)    | [![AppVeyor branch](https://img.shields.io/appveyor/ci/bmartin5692/bumper/master?logo=appveyor)](https://ci.appveyor.com/project/bmartin5692/bumper/branch/master) |
-| TravisCI (Linux)    | [![Travis (.org) branch](https://img.shields.io/travis/bmartin5692/bumper/master?logo=travis)](https://travis-ci.com/bmartin5692/bumper/branch/master) |
-| Docker Hub	      | [![Docker Build](https://img.shields.io/docker/cloud/build/bmartin5692/bumper?logo=docker)](https://hub.docker.com/r/bmartin5692/bumper/branch/master) |
-| CodeCov Coverage    | [![Codecov branch](https://img.shields.io/codecov/c/github/bmartin5692/bumper/master?logo=codecov)](https://codecov.io/gh/bmartin5692/bumper/branch/master) |
+| Default branch | Status |
+| -------------- | ------ |
+| CI (tests on Python 3.12–3.14, legacy harness, Docker) | [![CI](https://github.com/tunlezah/bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/tunlezah/bumper/actions/workflows/ci.yml) |
+| Container image (amd64, arm64) | [ghcr.io/tunlezah/bumper](https://github.com/tunlezah/bumper/pkgs/container/bumper) |
 
 
 **Community**:

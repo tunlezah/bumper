@@ -9,8 +9,10 @@ import aiohttp_jinja2
 import jinja2
 from aiohttp import web
 
-from bumper import plugins
+from bumper import plugins, tasks, tls
 from bumper.models import *
+from bumper.timeutil import utcnow_naive
+import weakref
 
 
 class aiohttp_filter(logging.Filter):
@@ -45,12 +47,14 @@ class ConfServer:
         self.runner = None
         self.runners = []
         self.excludelogging = ["base", "remove-bot", "remove-client", "restart-service"]
+        self._tls_logged = weakref.WeakSet()  # SSL objects of connections already logged
 
     def get_milli_time(self, timetoconvert):
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
+        self.app = web.Application(middlewares=[
+            self.log_tls_connection,
             self.log_all_requests,
             ])
         aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.bumper_dir,"bumper","web","templates")))
@@ -108,8 +112,7 @@ class ConfServer:
         self.runners.append(runner)
         await runner.setup()
         if usessl:
-            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+            ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
             site = web.TCPSite(
                 runner,
                 host=address,
@@ -133,8 +136,7 @@ class ConfServer:
             await self.runner.setup()
 
             if self.usessl:
-                ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+                ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
                 self.site = web.TCPSite(
                     self.runner,
                     host=self.address[0],
@@ -151,14 +153,14 @@ class ConfServer:
 
         except PermissionError as e:
             confserverlog.error(e.strerror)
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
         except asyncio.CancelledError:
             pass
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
     async def stop_server(self):
         try:
@@ -172,16 +174,17 @@ class ConfServer:
 
             bots = bumper.db_get().table("bots").all()
             clients = bumper.db_get().table("clients").all()
-            helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
+            helperbot = bumper.mqttserver.session_state(bumper.mqtt_helperbot.Client.session)
             mqttserver = bumper.mqtt_server.broker
             xmppserver = bumper.xmpp_server
             mq_sessions = []
-            for sess in mqttserver._sessions:
+            broker_sessions = bumper.mqttserver.broker_sessions(mqttserver)
+            for client_id, session, handler in broker_sessions:
                 tmpsess = []
                 tmpsess.append({
-                    "username": mqttserver._sessions[sess][0].username,
-                    "client_id": mqttserver._sessions[sess][0].client_id,
-                    "state": mqttserver._sessions[sess][0].transitions.state,
+                    "username": session.username,
+                    "client_id": session.client_id,
+                    "state": bumper.mqttserver.session_state(session),
                 })
                
                 mq_sessions.append(tmpsess)
@@ -190,10 +193,10 @@ class ConfServer:
                 "clients": clients,
                 "helperbot": [{"state": helperbot}],
                 "mqtt_server": [
-                    {"state": mqttserver.transitions.state},
+                    {"state": bumper.mqttserver.broker_state(mqttserver)},
                     {
                         "sessions": [
-                            {"count": len(mqttserver._sessions)},
+                            {"count": len(broker_sessions)},
                             {"clients": mq_sessions},
                         ]
                     },
@@ -208,9 +211,19 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     @web.middleware
+    async def log_tls_connection(self, request, handler):
+        # Log the negotiated TLS version/cipher once per connection
+        transport = request.transport
+        ssl_object = transport.get_extra_info("ssl_object") if transport is not None else None
+        if ssl_object is not None and ssl_object not in self._tls_logged:
+            self._tls_logged.add(ssl_object)
+            tls.log_connection("HTTPS", transport.get_extra_info("peername"), ssl_object)
+        return await handler(request)
+
+    @web.middleware
     async def log_all_requests(self, request, handler):
 
-        if request._match_info.route.name not in self.excludelogging:
+        if request.match_info.route.name not in self.excludelogging:
             to_log = {
                 "request": {
                     "route_name": f"{request.match_info.route.name}",
@@ -255,15 +268,18 @@ class ConfServer:
                 
                 return response
 
-            except web.HTTPNotFound as notfound:
+            except web.HTTPNotFound:
                 confserverlog.debug("Request path {} not found".format(request.raw_path))
                 confserverlog.debug(json.dumps(to_log))
-                return notfound
+                raise  # aiohttp turns it into the same 404 response
 
             except Exception as e:
                 confserverlog.exception("{}".format(e))
                 confserverlog.error(json.dumps(to_log))
-                return e 
+                # HTTP exceptions (e.g. 405) become the same response as when
+                # returned; anything else is a 500, which is also what aiohttp
+                # makes of a returned non-response object.
+                raise
 
         else:
             return await handler(request)
@@ -271,27 +287,27 @@ class ConfServer:
     async def restart_Helper(self):
 
         await bumper.mqtt_helperbot.Client.disconnect()
-        asyncio.create_task(bumper.mqtt_helperbot.start_helper_bot())
+        tasks.spawn(bumper.mqtt_helperbot.start_helper_bot())
 
     async def restart_MQTT(self):
         
-        if not (bumper.mqtt_server.broker.transitions.state == "stopped" or bumper.mqtt_server.broker.transitions.state == "not_started"):
+        broker_state = bumper.mqttserver.broker_state(bumper.mqtt_server.broker)
+        if not (broker_state == "stopped" or broker_state == "not_started"):
             # close session writers - this was required so bots would reconnect properly after restarting
-            for sess in list(bumper.mqtt_server.broker._sessions):                
-                sessobj = bumper.mqtt_server.broker._sessions[sess][1]
-                if sessobj.session.transitions.state == "connected":
-                    await sessobj.writer.close()
+            for client_id, session, handler in bumper.mqttserver.broker_sessions(bumper.mqtt_server.broker):
+                if bumper.mqttserver.session_state(handler.session) == "connected":
+                    await bumper.mqttserver.close_session_connection(handler)
 
             #await bumper.mqtt_server.broker.shutdown()
-            aloop = asyncio.get_event_loop()
+            aloop = asyncio.get_running_loop()
             aloop.call_later(
-            0.1, lambda: asyncio.create_task(bumper.mqtt_server.broker.shutdown())
+            0.1, lambda: tasks.spawn(bumper.mqtt_server.broker.shutdown())
             )  # In .1 seconds shutdown broker
 
         
-        aloop = asyncio.get_event_loop()
+        aloop = asyncio.get_running_loop()
         aloop.call_later(
-           1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
+           1.5, lambda: tasks.spawn(bumper.mqtt_server.broker_coro())
         )  # In 1.5 seconds start broker
 
     async def restart_XMPP(self):
@@ -305,10 +321,10 @@ class ConfServer:
                 await self.restart_Helper()
                 return web.json_response({"status": "complete"})
             elif service == "MQTTServer":
-                asyncio.create_task(self.restart_MQTT())
-                aloop = asyncio.get_event_loop()
+                tasks.spawn(self.restart_MQTT())
+                aloop = asyncio.get_running_loop()
                 aloop.call_later(
-                    5, lambda: asyncio.create_task(self.restart_Helper())
+                    5, lambda: tasks.spawn(self.restart_Helper())
                 )  # In 5 seconds restart Helperbot
                 
                 return web.json_response({"status": "complete"})
@@ -397,7 +413,7 @@ class ConfServer:
                             #    "username": "fusername_{}".format(tmpuser["userid"]),
                             # },
                             "msg": "操作成功",
-                            "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                            "time": self.get_milli_time(utcnow_naive().timestamp()),
                         }
 
                         return web.json_response(body)
@@ -406,7 +422,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -575,7 +591,7 @@ class ConfServer:
                                     #    "username": "fusername_{}".format(tmpuser["userid"]),
                                     # },
                                     "msg": "操作成功",
-                                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                                 }
 
                                 return web.json_response(body)
@@ -584,7 +600,7 @@ class ConfServer:
                             "code": bumper.ERR_USER_NOT_ACTIVATED,
                             "data": None,
                             "msg": "当前密码错误",
-                            "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                            "time": self.get_milli_time(utcnow_naive().timestamp()),
                         }
 
                         return web.json_response(body)
@@ -633,7 +649,7 @@ class ConfServer:
                                     "msg": "操作成功",
                                     "success": True,
                                     "time": self.get_milli_time(
-                                        datetime.utcnow().timestamp()
+                                        utcnow_naive().timestamp()
                                     ),
                                 }
                             else:
@@ -645,7 +661,7 @@ class ConfServer:
                                     },
                                     "msg": "操作成功",
                                     "time": self.get_milli_time(
-                                        datetime.utcnow().timestamp()
+                                        utcnow_naive().timestamp()
                                     ),
                                 }
                             return web.json_response(body)
@@ -654,7 +670,7 @@ class ConfServer:
                     "code": bumper.ERR_TOKEN_INVALID,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -691,7 +707,7 @@ class ConfServer:
                         #    "username": "fusername_{}".format(tmpuser["userid"]),
                         # },
                         "msg": "操作成功",
-                        "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                        "time": self.get_milli_time(utcnow_naive().timestamp()),
                     }
                     return web.json_response(body)
 
@@ -700,7 +716,7 @@ class ConfServer:
                         "code": bumper.ERR_TOKEN_INVALID,
                         "data": None,
                         "msg": "当前密码错误",
-                        "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                        "time": self.get_milli_time(utcnow_naive().timestamp()),
                     }
                     return web.json_response(body)
 
@@ -776,7 +792,7 @@ class ConfServer:
                     #    "username": "fusername_{}".format(tmpuser["userid"]),
                     # },
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return body
@@ -785,7 +801,7 @@ class ConfServer:
                 confserverlog.exception("{}".format(e))     
 
 
-        def getUserAccountInfo(self, request):
+        async def getUserAccountInfo(self, request):
             try:
                 user_devid = request.match_info.get("devid", "")
                 countrycode = request.match_info.get("country", "us")
@@ -818,7 +834,7 @@ class ConfServer:
                         "loginName": login_details.loginName,
                     },
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 # Example body
@@ -869,7 +885,7 @@ class ConfServer:
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": None,
                     "msg": "操作成功",
-                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(utcnow_naive().timestamp()),
                 }
 
                 return web.json_response(body)

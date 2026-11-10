@@ -1,0 +1,102 @@
+{
+  "changes": [
+    "C-005"
+  ],
+  "expected": {
+    "dim_xml": {
+      "bot_received": [
+        {
+          "payload": "<ctl td='GetCleanState'/>",
+          "topic": "iot/p2p/GetCleanState/helperbot/bumper/helperbot/E2002/ls1ok3/wC3g/q/<random-alpha-6>/x"
+        }
+      ],
+      "response": {
+        "body": {
+          "id": "<random-alpha-6>",
+          "resp": "<ctl ret='ok' status='idle'/>",
+          "ret": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      }
+    },
+    "iot_json": {
+      "bot_received": [
+        {
+          "payload": "{\"header\": {\"pri\": \"1\", \"ts\": 1600000000000, \"tzm\": 480, \"ver\": \"0.0.50\"}}",
+          "topic": "iot/p2p/getWKVer/helperbot/bumper/helperbot/E2002/ls1ok3/wC3g/q/<random-alpha-4>/j"
+        }
+      ],
+      "response": {
+        "body": {
+          "id": "<random-alpha-4>",
+          "resp": {
+            "body": {
+              "code": 0,
+              "data": {
+                "ver": "0.13.5"
+              },
+              "msg": "ok"
+            },
+            "header": {
+              "pri": 1,
+              "ts": 1600000000000,
+              "tzm": 480,
+              "ver": "0.0.50"
+            }
+          },
+          "ret": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      }
+    },
+    "iot_xml": {
+      "bot_received": [
+        {
+          "payload": "<ctl td='GetChargeState'/>",
+          "topic": "iot/p2p/GetChargeState/helperbot/bumper/helperbot/E2002/ls1ok3/wC3g/q/<random-alpha-4>/x"
+        }
+      ],
+      "response": {
+        "body": {
+          "id": "<random-alpha-4>",
+          "resp": "<ctl ret='ok'><charge type='SlotCharging' h='' r='a' s='' g='0'/></ctl>",
+          "ret": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      }
+    },
+    "lg_logs": {
+      "bot_received": [
+        {
+          "payload": "<ctl count=\"30\"/>",
+          "topic": "iot/p2p/GetCleanLogs/helperbot/bumper/helperbot/E2002/ls1ok3/wC3g/q/<random-alpha-6>/x"
+        }
+      ],
+      "response": {
+        "body": {
+          "logs": [
+            {
+              "area": "10",
+              "cleanType": "a",
+              "last": "600",
+              "ts": "1600000000"
+            },
+            {
+              "area": "4",
+              "cleanType": "s",
+              "last": "300",
+              "ts": "1600100000"
+            }
+          ],
+          "ret": "ok"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      }
+    }
+  },
+  "reason": "Element.getchildren() was removed in Python 3.9; with list(element) the code behaves as it did on Python 3.7 (golden_reference/py37)."
+}

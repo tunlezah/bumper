@@ -1,0 +1,114 @@
+{
+  "description": "appsvr app.do branches without bots and the service list.",
+  "steps": [
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/appsvr/app.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr GET"
+    },
+    {
+      "request": {
+        "body": {
+          "json": {
+            "todo": "GetShareDeviceList"
+          }
+        },
+        "method": "POST",
+        "path": "/api/appsvr/app.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr unknown todo"
+    },
+    {
+      "request": {
+        "body": {
+          "form": {
+            "todo": "GetGlobalDeviceList",
+            "userid": "testuser"
+          }
+        },
+        "method": "POST",
+        "path": "/api/appsvr/app.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": 0,
+          "devices": [],
+          "ret": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr GetGlobalDeviceList form"
+    },
+    {
+      "request": {
+        "body": {
+          "content_type": "application/json",
+          "raw": "{"
+        },
+        "method": "POST",
+        "path": "/api/appsvr/app.do",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "result": "fail",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr malformed"
+    },
+    {
+      "request": {
+        "body": null,
+        "method": "GET",
+        "path": "/api/appsvr/service/list",
+        "port": "https"
+      },
+      "response": {
+        "body": {
+          "code": 0,
+          "data": {
+            "account": "users-base.ecouser.net",
+            "jmq": "jmq-ngiot-eu.ecouser.net",
+            "lb": "lbo.ecouser.net",
+            "magw": "api-app.ecouser.net",
+            "msgcloud": "msg-eu.ecouser.net:5223",
+            "ngiotLb": "jmq-ngiot-eu.ecouser.net",
+            "rop": "api-rop.ecouser.net"
+          },
+          "ret": "ok",
+          "todo": "result"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "appsvr service list"
+    }
+  ]
+}

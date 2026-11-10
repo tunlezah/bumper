@@ -5,12 +5,30 @@ import re
 import uuid
 import xml.etree.ElementTree as ET
 import base64
-import ssl
 import bumper
+from bumper import tls
+from bumper import tasks
 import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
 boterrorlog = logging.getLogger("boterror")
+
+
+def tostring_py37(element):
+    """ET.tostring() with every element's attributes in alphabetical order.
+
+    Python 3.7, which the legacy Docker image ran, serialised attributes
+    sorted; Python >= 3.8 keeps document order (bpo-34160), which would move
+    the "from" attribute Bumper adds to the end of every forwarded stanza.
+    Robots and apps have only ever seen the sorted form, so the forwarding
+    paths keep it (see docs/modernisation/CHANGES.md, C-005).
+    """
+    for elem in element.iter():
+        if len(elem.attrib) > 1:
+            items = sorted(elem.attrib.items())
+            elem.attrib.clear()
+            elem.attrib.update(items)
+    return ET.tostring(element)
 
 
 class XMPPServer:
@@ -40,7 +58,7 @@ class XMPPServer:
 
         except PermissionError as e:
             xmppserverlog.error(e.strerror)
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
             pass
 
         except asyncio.CancelledError:
@@ -48,7 +66,7 @@ class XMPPServer:
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
-            asyncio.create_task(bumper.shutdown())
+            tasks.spawn(bumper.shutdown())
 
     def disconnect(self):
 
@@ -243,7 +261,7 @@ class XMPPAsyncClient:
                     ctl_to = xml.get("to")
                     if not "from" in xml.attrib:
                         xml.attrib["from"] = "{}".format(self.bumper_jid)
-                    rxmlstring = ET.tostring(xml).decode("utf-8")
+                    rxmlstring = tostring_py37(xml).decode("utf-8")
                     # clean up string to remove namespaces added by ET
                     rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                     rxmlstring = rxmlstring.replace("ns0:", "")
@@ -275,7 +293,7 @@ class XMPPAsyncClient:
                 pingfrom = self.bumper_jid
                 if not "from" in xml.attrib:
                     xml.attrib["from"] = "{}".format(pingfrom)
-                pingstring = ET.tostring(xml).decode("utf-8")
+                pingstring = tostring_py37(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
                 pingstring = pingstring.replace("ns0:", "")
@@ -300,7 +318,7 @@ class XMPPAsyncClient:
             )
             self.send(pingstring)
             await asyncio.sleep(time)
-            asyncio.Task(self.schedule_ping(time))
+            tasks.spawn(self.schedule_ping(time))
 
     def _handle_result(self, xml, data):
         try:
@@ -314,8 +332,8 @@ class XMPPAsyncClient:
             ):  # No permissions, usually if bot was last on Ecovac network, Bumper will try to add fuid user as owner
                 if self.type == self.BOT:
                     xmppserverlog.info("Bot reported user has no permissions, Bumper will attempt to add user to bot. This is typical if bot was last on Ecovacs Network.")
-                    xquery = xml.getchildren()
-                    ctl = xquery[0].getchildren()
+                    xquery = list(xml)
+                    ctl = list(xquery[0])
                     if "error" in ctl[0].attrib:
                         ctlerr = ctl[0].attrib["error"]
                         adminuser = ctlerr.replace("permission denied, please contact ", "")
@@ -352,7 +370,7 @@ class XMPPAsyncClient:
                         )
 
             else:
-                rxmlstring = ET.tostring(xml).decode("utf-8")
+                rxmlstring = tostring_py37(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                 rxmlstring = rxmlstring.replace("ns0:", "")
@@ -484,16 +502,17 @@ class XMPPAsyncClient:
                 )  # send process to client
 
                 # After proceed the connection should be upgraded to TLS
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 transport = self.transport
                 protocol = self.transport.get_protocol()
 
-                ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
-                ssl_ctx.load_verify_locations(cafile=bumper.ca_cert)
+                ssl_ctx = tls.server_context(bumper.server_cert, bumper.server_key)
 
                 new_transport = await loop.start_tls(
                     transport, protocol, ssl_ctx, server_side=True
+                )
+                tls.log_connection(
+                    "XMPP", new_transport.get_extra_info("peername"), new_transport.get_extra_info("ssl_object")
                 )
                 protocol.connection_made(new_transport)
 
@@ -570,8 +589,8 @@ class XMPPAsyncClient:
             if client:
                 bumper.client_set_xmpp(client["resource"], True)
 
-            clientbindxml = xml.getchildren()
-            clientresourcexml = clientbindxml[0].getchildren()
+            clientbindxml = list(xml)
+            clientresourcexml = list(clientbindxml[0])
             if self.devclass:  # its a bot
                 self.name = "XMPP_Client_{}_{}".format(self.uid, self.devclass)
                 self.bumper_jid = "{}@{}.ecorobot.net/atom".format(
@@ -621,7 +640,7 @@ class XMPPAsyncClient:
         res = '<iq type="result" id="{}" />'.format(xml.get("id"))
         self._set_state("READY")
         self.send(res)
-        asyncio.Task(self.schedule_ping(30))
+        tasks.spawn(self.schedule_ping(30))
 
     def _handle_presence(self, xml):
 
@@ -738,7 +757,7 @@ class XMPPAsyncClient:
 
                     elif "-tls" in item.tag:
                         if not self.TLSUpgraded:
-                            asyncio.Task(self._handle_starttls(newdata.encode("utf-8")))
+                            tasks.spawn(self._handle_starttls(newdata.encode("utf-8")))
 
                     elif "presence" in item.tag:
                         self._handle_presence(item)

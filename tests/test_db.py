@@ -16,7 +16,6 @@ def test_db_path():
 
 def test_user_db():
 
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.user_add("testuser")  # Add testuser
 
     assert (
@@ -73,7 +72,7 @@ def test_user_db():
     bumper.user_revoke_all_tokens("testuser")  # Revoke all tokens
     assert len(bumper.user_get_tokens("testuser")) == 0  # Test 0 tokens are available
 
-    db = TinyDB("tests/tmp.db")
+    db = TinyDB(bumper.db)
     tokens = db.table("tokens")
     tokens.insert(
         {
@@ -87,7 +86,7 @@ def test_user_db():
     bumper.user_revoke_expired_tokens("testuser")  # Revoke expired tokens
     assert len(bumper.user_get_tokens("testuser")) == 0  # Test 0 tokens are available
 
-    db = TinyDB("tests/tmp.db")
+    db = TinyDB(bumper.db)
     tokens = db.table("tokens")
     tokens.insert(
         {
@@ -103,7 +102,6 @@ def test_user_db():
 
 
 def test_bot_db():
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.bot_add("sn_123", "did_123", "dev_123", "res_123", "co_123")
     assert bumper.bot_get("did_123")  # Test that bot was added to db
 
@@ -127,7 +125,6 @@ def test_bot_db():
 
 
 def test_client_db():
-    bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.client_add("user_123", "realm_123", "resource_123")
     assert bumper.client_get("resource_123")  # Test client was added
 

@@ -3,13 +3,17 @@
 import logging
 import asyncio
 import os
-import hbmqtt
-from hbmqtt.broker import Broker
-from hbmqtt.client import MQTTClient
-from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
-import pkg_resources
+from dataclasses import dataclass
+from typing import Optional
+from amqtt.adapters import StreamReaderAdapter, StreamWriterAdapter
+from amqtt.broker import Broker
+from amqtt.client import MQTTClient
+from amqtt.errors import BrokerError
+from amqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
+from amqtt.plugins.base import BaseAuthPlugin
 import time
 import bumper
+from bumper import tls
 import json
 from datetime import datetime, timedelta
 import bumper
@@ -18,6 +22,68 @@ from passlib.apps import custom_app_context as pwd_context
 helperbotlog = logging.getLogger("helperbot")
 boterrorlog = logging.getLogger("boterror")
 mqttserverlog = logging.getLogger("mqttserver")
+
+
+# --- amqtt internals ---------------------------------------------------------
+# Everything Bumper needs to know about amqtt's session bookkeeping lives in
+# the functions below, so that an amqtt upgrade that changes it breaks here,
+# in one place, and in tests/test_mqtt_compat.py. They only use attributes
+# without a leading underscore (Broker.sessions, Session.transitions,
+# ProtocolHandler.session/.writer), but the *shape* of that data (a
+# (Session, handler) tuple per client id, the state names) is not a documented
+# API.
+
+
+def broker_sessions(broker):
+    """[(client_id, Session, BrokerProtocolHandler)] for every session the
+    broker currently knows about, in insertion order."""
+    return [(client_id, entry[0], entry[1]) for client_id, entry in broker.sessions.items()]
+
+
+def session_state(session):
+    """State name of an amqtt Session: 'new', 'connected' or 'disconnected'."""
+    if session is None:
+        return None
+    return session.transitions.state
+
+
+def broker_state(broker):
+    """State name of an amqtt Broker: 'new', 'starting', 'started', 'not_started',
+    'stopping', 'stopped' or 'not_stopped'."""
+    return broker.transitions.state
+
+
+def client_is_connected(client):
+    """True while an MQTTClient's session is connected (replaces the legacy
+    check of the private ``client._handler.writer``)."""
+    return client is not None and session_state(client.session) == "connected"
+
+
+async def close_session_connection(handler):
+    """Close the network connection behind a broker-side protocol handler."""
+    if handler is not None and handler.writer is not None:
+        await handler.writer.close()
+
+
+def release_sessions_of_connection(broker, writer_adapter):
+    """Mark sessions still bound to a finished connection as disconnected.
+
+    amqtt 0.12 registers a session and moves it to "connected" *before* it
+    checks authentication; when authentication fails it closes the connection
+    but leaves the session "connected" in ``Broker.sessions`` forever, so the
+    status page would list failed logins as *connected* clients and the table
+    would grow without bound. (The legacy broker kept them too, as "new".)
+    Once a connection is over, any session whose handler still writes to it
+    is stale; moving it to "disconnected" lets amqtt's own session monitor
+    remove it, like any other disconnected clean session (see CHANGES.md,
+    C-003).
+    """
+    released = []
+    for client_id, session, handler in broker_sessions(broker):
+        if handler is not None and handler.writer is writer_adapter and session_state(session) == "connected":
+            session.transitions.disconnect()
+            released.append(client_id)
+    return released
 
 class MQTTHelperBot:
 
@@ -57,7 +123,7 @@ class MQTTHelperBot:
 #        except asyncio.CancelledError as e:
 #            pass
 
-#        except hbmqtt.client.ConnectException as e:
+#        except amqtt.errors.ConnectError as e:
 #            helperbotlog.Error(e)
 #            pass
 
@@ -109,7 +175,7 @@ class MQTTHelperBot:
             }
 
     async def send_command(self, cmdjson, requestid):
-        if not self.Client._handler.writer is None:
+        if client_is_connected(self.Client):
             try:
                 ttopic = "iot/p2p/{}/helperbot/bumper/helperbot/{}/{}/{}/q/{}/{}".format(
                     cmdjson["cmdName"],
@@ -155,7 +221,7 @@ class MQTTServer:
         try:
             await self.broker.start()
 
-        except hbmqtt.broker.BrokerException as e:
+        except BrokerError as e:
             mqttserverlog.exception(e)
             #asyncio.create_task(bumper.shutdown())
             pass
@@ -172,71 +238,150 @@ class MQTTServer:
             # Default config opts
             passwd_file = os.path.join(
                 os.path.join(bumper.data_dir, "passwd")
-            ) # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+            ) # For file auth, set user:hash in passwd file (passlib hashes, e.g. sha512_crypt)
 
             allow_anon = False
 
             for key, value in kwargs.items():
-                if key == "password_file":            
+                if key == "password_file":
                     passwd_file = kwargs["password_file"]
-                
+
                 elif key == "allow_anonymous":
                     allow_anon = kwargs["allow_anonymous"] # Set to True to allow anonymous authentication
-
-            # The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
-            distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
-            bumper_plugin = pkg_resources.EntryPoint.parse(
-                "bumper = bumper.mqttserver:BumperMQTTServer_Plugin", dist=distribution
-            )
-            distribution._ep_map = {"hbmqtt.broker.plugins": {"bumper": bumper_plugin}}
-            pkg_resources.working_set.add(distribution)
 
             # Initialize bot server
             self.default_config = {
                 "listeners": {
-                    "default": {"type": "tcp"},
+                    # amqtt requires a "default" listener and would bind it to
+                    # 0.0.0.0:1883 (plain MQTT) unless bind is explicitly None.
+                    # The previous broker skipped bind-less listeners, so the
+                    # legacy {"type": "tcp"} must not be ported verbatim.
+                    "default": {"type": "tcp", "bind": None},
+                    # The TLS socket is served by BumperBroker itself (see
+                    # below); amqtt only needs to know the listener exists.
                     "tls1": {
+                        "type": "external",
                         "bind": "{}:{}".format(address[0], address[1]),
-                        "ssl": "on",
-                        "certfile": bumper.server_cert,
-                        "keyfile": bumper.server_key,
                     },
                 },
-                "sys_interval": 0,
-                "auth": {
-                    "allow-anonymous": allow_anon, 
-                    "password-file": passwd_file,
-                    "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                # Plugins are loaded by dotted path. Listing them replaces
+                # amqtt's defaults (incl. its anonymous-auth and $SYS
+                # plugins), and the legacy "auth"/"topic-check" sections are
+                # ignored when "plugins" is present, so the auth options live
+                # in the plugin's own Config.
+                "plugins": {
+                    "bumper.mqttserver.BumperMQTTServer_Plugin": {  # provides auth and handling of bots/clients connecting
+                        "allow_anonymous": allow_anon,
+                        "password_file": passwd_file,
+                    },
                 },
-                "topic-check": {"enabled": False},
             }
 
-            self.broker = hbmqtt.broker.Broker(config=self.default_config)
+            self.broker = BumperBroker(
+                config=self.default_config,
+                tls_listener="tls1",
+                bind=address,
+            )
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
 
-class BumperMQTTServer_Plugin:
-    def __init__(self, context):
-        self.context = context
+class BumperBroker(Broker):
+    """amqtt Broker whose TLS listener is an asyncio server owned by Bumper.
+
+    amqtt builds its listener SSLContext itself from certfile/keyfile and
+    offers no way to pass one in. So the "tls1" listener is declared as an
+    amqtt *external* listener, and this class serves the TLS socket with
+    Bumper's own SSLContext and hands every connection to the broker via the
+    public ``Broker.external_connected``. The socket follows the broker's
+    lifecycle: bound in ``start()`` before the broker starts (so bind errors
+    surface as BrokerError, like before) and closed in ``shutdown()``.
+    """
+
+    def __init__(self, config, *, tls_listener, bind, **kwargs):
+        super().__init__(config=config, **kwargs)
+        self._bumper_tls_listener = tls_listener
+        self._bumper_bind = bind
+        self._bumper_tls_server = None
+
+    def bumper_ssl_context(self):
+        # Shared TLS policy; the MQTT listener always asked for an optional
+        # client certificate, so it still does.
+        return tls.server_context(bumper.server_cert, bumper.server_key, request_client_cert=True)
+
+    async def start(self):
         try:
-            self.auth_config = self.context.config["auth"]
+            self._bumper_tls_server = await asyncio.start_server(
+                self._bumper_tls_connected,
+                self._bumper_bind[0],
+                self._bumper_bind[1],
+                ssl=self.bumper_ssl_context(),
+                reuse_address=True,
+                start_serving=False,
+            )
+        except Exception as e:
+            raise BrokerError("Broker instance can't be started: {}".format(e)) from e
+
+        try:
+            await super().start()
+        except Exception:
+            self._bumper_close_tls_server()
+            raise
+        await self._bumper_tls_server.start_serving()
+        self.logger.info(
+            "Listener '{}' bind to {}:{} (TLS, served by Bumper)".format(
+                self._bumper_tls_listener, self._bumper_bind[0], self._bumper_bind[1]
+            )
+        )
+
+    async def shutdown(self):
+        self._bumper_close_tls_server()
+        await super().shutdown()
+
+    def _bumper_close_tls_server(self):
+        if self._bumper_tls_server is not None:
+            self._bumper_tls_server.close()
+            self._bumper_tls_server = None
+
+    async def _bumper_tls_connected(self, reader, writer):
+        tls.log_connection("MQTT", writer.get_extra_info("peername"), writer.get_extra_info("ssl_object"))
+        writer_adapter = StreamWriterAdapter(writer)
+        try:
+            await self.external_connected(StreamReaderAdapter(reader), writer_adapter, self._bumper_tls_listener)
+        except Exception as e:
+            mqttserverlog.exception("{}".format(e))
+            writer.close()
+        finally:
+            for client_id in release_sessions_of_connection(self, writer_adapter):
+                mqttserverlog.debug("Released stale session of finished connection: {}".format(client_id))
+
+
+class BumperMQTTServer_Plugin(BaseAuthPlugin):
+    @dataclass
+    class Config:
+        allow_anonymous: bool = False  # MQTTServer always sets this explicitly
+        password_file: Optional[str] = None
+
+    def __init__(self, context):
+        super().__init__(context)
+        try:
+            # Same keys as the legacy broker config's "auth" section
+            self.auth_config = {
+                "allow-anonymous": self.config.allow_anonymous,
+                "password-file": self.config.password_file,
+            }
             self._users = dict()
             self._read_password_file()
 
-        except KeyError:
-            self.context.logger.warning(
-                "'bumper' section not found in context configuration"
-            )
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
-    async def authenticate(self, *args, **kwargs):
+    async def authenticate(self, *, session):
         authenticated = False
-        
+        username = None
+
         try:
-            session = kwargs.get("session", None)
             username = session.username
             password = session.password
             client_id = session.client_id
@@ -295,7 +440,7 @@ class BumperMQTTServer_Plugin:
 
         except Exception as e:
             mqttserverlog.exception(
-                "Session: {} - {}".format((kwargs.get("session", None)), e)
+                "Session: {} - {}".format(session, e)
             )
             authenticated = False
 
@@ -327,7 +472,7 @@ class BumperMQTTServer_Plugin:
             except FileNotFoundError:
                 self.context.logger.warning(f"Password file {password_file} not found")
 
-    async def on_broker_client_connected(self, client_id):
+    async def on_broker_client_connected(self, *, client_id, client_session):
 
         didsplit = str(client_id).split("@")
 
@@ -342,7 +487,7 @@ class BumperMQTTServer_Plugin:
             bumper.client_set_mqtt(client["resource"], True)
             return
 
-    async def on_broker_message_received(self, client_id, message):
+    async def on_broker_message_received(self, *, client_id, message):
         self.handle_helperbot_msg(client_id, message)
         
     def handle_helperbot_msg(self, client_id, message):
@@ -405,7 +550,7 @@ class BumperMQTTServer_Plugin:
                     bumper.mqtt_helperbot.command_responses.remove(msg)
 
 
-    async def on_broker_client_disconnected(self, client_id):
+    async def on_broker_client_disconnected(self, *, client_id, client_session):
 
         didsplit = str(client_id).split("@")
 

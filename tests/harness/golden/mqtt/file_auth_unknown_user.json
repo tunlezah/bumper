@@ -1,0 +1,8 @@
+{
+  "client_id": "test-file-auth-unknown",
+  "connack": "connection closed without CONNACK",
+  "status_rows": [
+    "<TR>\n            <TD>nobody</TD>\n            <TD>test-file-auth-unknown</TD>       \n            <TD > new </TD>\n        </TR>"
+  ],
+  "username": "nobody"
+}

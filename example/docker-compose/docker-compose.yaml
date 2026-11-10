@@ -1,5 +1,15 @@
----
-version: "3.6"
+# Bumper behind an nginx stream proxy that routes port 443 by SNI: MQTT
+# ("mq" host names, or no SNI at all) goes to Bumper's MQTT port 8883,
+# everything else to Bumper's HTTPS port 443. App v2+ and robots with newer
+# firmware connect to MQTT on port 443.
+#
+# The bumper container runs as uid/gid 10001. Create the two directories and
+# hand them over before the first start:
+#
+#   mkdir -p config certs && sudo chown 10001:10001 config certs
+#
+# (Coming from the old image, which ran as root: chown your existing config/
+# and certs/ the same way; the CA in certs/ is kept.)
 
 networks:
   bumper:
@@ -25,21 +35,21 @@ services:
       - ./nginx/:/etc/nginx:ro # See config file below
 
   bumper:
-    image: bmartin5692/bumper
+    image: ghcr.io/tunlezah/bumper:latest
     restart: unless-stopped
     networks:
       bumper:
 
     environment:
-      PUID: 1000
-      PGID: 1000
       TZ: Europe/Rome
-      BUMPER_ANNOUNCE_IP: XXX # Insert your IP
-      BUMPER_LISTEN: 0.0.0.0
+      BUMPER_ANNOUNCE_IP: XXX # Insert the IP address of this host
+      # BUMPER_LISTEN: 0.0.0.0       # image default
+      # LOG_TO_STDOUT: "true"        # image default
+      # BUMPER_TLS_MIN_VERSION: TLSv1_2  # only if all your robots support TLS 1.2
       # BUMPER_DEBUG: "true"
-      LOG_TO_STDOUT: "true"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - ./config:/bumper/data
+      # Generated on first start. Keep it: robots and apps trust this CA.
       - ./certs:/bumper/certs

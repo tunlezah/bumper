@@ -23,18 +23,57 @@ def os_db_path():  # createdir=True):
     return os.path.join(bumper.data_dir, "bumper.db")
 
 
+# One TinyDB instance for the whole process. The legacy code opened a new
+# TinyDB on every call and never closed it, leaking a file handle each time.
+# TinyDB's JSONStorage re-reads the file on every read and the tables are
+# created with cache_size=0, so a shared instance sees exactly the same data.
+_db = None
+_db_path = None
+_db_inode = None
+
+
+def _file_inode(path):
+    try:
+        return os.stat(path).st_ino
+    except FileNotFoundError:
+        return None
+
+
 def db_get():
-    # Will create the database if it doesn't exist
-    db = TinyDB(db_file())
+    """The shared TinyDB for db_file().
 
-    # Will create the tables if they don't exist
-    db.table("users", cache_size=0)
-    db.table("clients", cache_size=0)
-    db.table("bots", cache_size=0)
-    db.table("tokens", cache_size=0)
-    db.table("oauth", cache_size=0)
+    Re-opened when ``bumper.db`` points somewhere else or the file was deleted
+    or replaced, so every call still sees the file as it is now, like the
+    legacy per-call instances did.
+    """
+    global _db, _db_path, _db_inode
+    path = db_file()
+    if _db is None or _db_path != path or _file_inode(path) != _db_inode:
+        db_close()
 
-    return db
+        # Will create the database if it doesn't exist
+        db = TinyDB(path)
+
+        # Will create the tables if they don't exist
+        db.table("users", cache_size=0)
+        db.table("clients", cache_size=0)
+        db.table("bots", cache_size=0)
+        db.table("tokens", cache_size=0)
+        db.table("oauth", cache_size=0)
+
+        _db, _db_path, _db_inode = db, path, _file_inode(path)
+
+    return _db
+
+
+def db_close():
+    """Close the shared TinyDB (called on shutdown; safe to call twice)."""
+    global _db, _db_path, _db_inode
+    if _db is not None:
+        try:
+            _db.close()
+        finally:
+            _db, _db_path, _db_inode = None, None, None
 
 
 def user_add(userid):
@@ -61,62 +100,57 @@ def user_by_deviceid(deviceid):
 
 def user_full_upsert(user):
     opendb = db_get()
-    with opendb:
-        users = opendb.table("users")
-        User = Query()
-        users.upsert(user, User.did == user["userid"])
+    users = opendb.table("users")
+    User = Query()
+    users.upsert(user, User.did == user["userid"])
 
 
 def user_add_device(userid, devid):
     opendb = db_get()
-    with opendb:
-        users = opendb.table("users")
-        User = Query()
-        user = users.get(User.userid == userid)
-        userdevices = list(user["devices"])
-        if not devid in userdevices:
-            userdevices.append(devid)
+    users = opendb.table("users")
+    User = Query()
+    user = users.get(User.userid == userid)
+    userdevices = list(user["devices"])
+    if not devid in userdevices:
+        userdevices.append(devid)
 
-        users.upsert({"devices": userdevices}, User.userid == userid)
+    users.upsert({"devices": userdevices}, User.userid == userid)
 
 
 def user_remove_device(userid, devid):
     opendb = db_get()
-    with opendb:
-        users = opendb.table("users")
-        User = Query()
-        user = users.get(User.userid == userid)
-        userdevices = list(user["devices"])
-        if devid in userdevices:
-            userdevices.remove(devid)
+    users = opendb.table("users")
+    User = Query()
+    user = users.get(User.userid == userid)
+    userdevices = list(user["devices"])
+    if devid in userdevices:
+        userdevices.remove(devid)
 
-        users.upsert({"devices": userdevices}, User.userid == userid)
+    users.upsert({"devices": userdevices}, User.userid == userid)
 
 
 def user_add_bot(userid, did):
     opendb = db_get()
-    with opendb:
-        users = opendb.table("users")
-        User = Query()
-        user = users.get(User.userid == userid)
-        userbots = list(user["bots"])
-        if not did in userbots:
-            userbots.append(did)
+    users = opendb.table("users")
+    User = Query()
+    user = users.get(User.userid == userid)
+    userbots = list(user["bots"])
+    if not did in userbots:
+        userbots.append(did)
 
-        users.upsert({"bots": userbots}, User.userid == userid)
+    users.upsert({"bots": userbots}, User.userid == userid)
 
 
 def user_remove_bot(userid, did):
     opendb = db_get()
-    with opendb:
-        users = opendb.table("users")
-        User = Query()
-        user = users.get(User.userid == userid)
-        userbots = list(user["bots"])
-        if did in userbots:
-            userbots.remove(did)
+    users = opendb.table("users")
+    User = Query()
+    user = users.get(User.userid == userid)
+    userbots = list(user["bots"])
+    if did in userbots:
+        userbots.remove(did)
 
-        users.upsert({"bots": userbots}, User.userid == userid)
+    users.upsert({"bots": userbots}, User.userid == userid)
 
 
 def user_get_tokens(userid):
@@ -131,120 +165,111 @@ def user_get_token(userid, token):
 
 def user_add_token(userid, token):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-        if not tmptoken:
-            bumperlog.debug("Adding token {} for userid {}".format(token, userid))
-            tokens.insert(
-                {
-                    "userid": userid,
-                    "token": token,
-                    "expiration": "{}".format(
-                        datetime.now()
-                        + timedelta(seconds=bumper.token_validity_seconds)
-                    ),
-                }
-            )
+    tokens = opendb.table("tokens")
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if not tmptoken:
+        bumperlog.debug("Adding token {} for userid {}".format(token, userid))
+        tokens.insert(
+            {
+                "userid": userid,
+                "token": token,
+                "expiration": "{}".format(
+                    datetime.now()
+                    + timedelta(seconds=bumper.token_validity_seconds)
+                ),
+            }
+        )
 
 
 def user_revoke_all_tokens(userid):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tsearch = tokens.search(Query().userid == userid)
-        for i in tsearch:
-            tokens.remove(doc_ids=[i.doc_id])
+    tokens = opendb.table("tokens")
+    tsearch = tokens.search(Query().userid == userid)
+    for i in tsearch:
+        tokens.remove(doc_ids=[i.doc_id])
 
 
 def user_revoke_expired_tokens(userid):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tsearch = tokens.search(Query().userid == userid)
-        for i in tsearch:
-            if datetime.now() >= datetime.fromisoformat(i["expiration"]):
-                bumperlog.debug(
-                    "Removing token {} due to expiration".format(i["token"])
-                )
-                tokens.remove(doc_ids=[i.doc_id])
+    tokens = opendb.table("tokens")
+    tsearch = tokens.search(Query().userid == userid)
+    for i in tsearch:
+        if datetime.now() >= datetime.fromisoformat(i["expiration"]):
+            bumperlog.debug(
+                "Removing token {} due to expiration".format(i["token"])
+            )
+            tokens.remove(doc_ids=[i.doc_id])
 
 
 def user_revoke_token(userid, token):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-        if tmptoken:
-            tokens.remove(doc_ids=[tmptoken.doc_id])
+    tokens = opendb.table("tokens")
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:
+        tokens.remove(doc_ids=[tmptoken.doc_id])
 
 
 def user_add_authcode(userid, token, authcode):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-        if tmptoken:
-            tokens.upsert(
-                {"authcode": authcode},
-                ((Query().userid == userid) & (Query().token == token)),
-            )
+    tokens = opendb.table("tokens")
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:
+        tokens.upsert(
+            {"authcode": authcode},
+            ((Query().userid == userid) & (Query().token == token)),
+        )
 
 
 def user_revoke_authcode(userid, token, authcode):
     opendb = db_get()
-    with opendb:
-        tokens = opendb.table("tokens")
-        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-        if tmptoken:
-            tokens.upsert(
-                {"authcode": ""},
-                ((Query().userid == userid) & (Query().token == token)),
-            )
+    tokens = opendb.table("tokens")
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:
+        tokens.upsert(
+            {"authcode": ""},
+            ((Query().userid == userid) & (Query().token == token)),
+        )
 
 
 def revoke_expired_oauths():
     opendb = db_get()
-    with opendb:
-        table = opendb.table("oauth")
-        entries = table.all()
+    table = opendb.table("oauth")
+    entries = table.all()
 
-        for i in entries:
-            oauth = OAuth(**i)
-            if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
-                bumperlog.debug(
-                    "Removing oauth {} due to expiration".format(oauth.access_token)
-                )
-                table.remove(doc_ids=[i.doc_id])
+    for i in entries:
+        oauth = OAuth(**i)
+        if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
+            bumperlog.debug(
+                "Removing oauth {} due to expiration".format(oauth.access_token)
+            )
+            table.remove(doc_ids=[i.doc_id])
 
 
 def user_revoke_expired_oauths(userid):
     opendb = db_get()
-    with opendb:
-        table = opendb.table("oauth")
-        search = table.search(Query().userid == userid)
-        for i in search:
-            oauth = OAuth(**i)
-            if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
-                bumperlog.debug(
-                    "Removing oauth {} due to expiration".format(oauth.access_token)
-                )
-                table.remove(doc_ids=[i.doc_id])
+    table = opendb.table("oauth")
+    search = table.search(Query().userid == userid)
+    for i in search:
+        oauth = OAuth(**i)
+        if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
+            bumperlog.debug(
+                "Removing oauth {} due to expiration".format(oauth.access_token)
+            )
+            table.remove(doc_ids=[i.doc_id])
 
 
 def user_add_oauth(userid) -> OAuth:
     user_revoke_expired_oauths(userid)
     opendb = db_get()
-    with opendb:
-        table = opendb.table("oauth")
-        entry = table.get(Query().userid == userid)
-        if entry:
-            return OAuth(**entry)
-        else:
-            oauth = OAuth.create_new(userid)
-            bumperlog.debug("Adding oauth {} for userid {}".format(oauth.access_token, userid))
-            table.insert(oauth.toDB())
-            return oauth
+    table = opendb.table("oauth")
+    entry = table.get(Query().userid == userid)
+    if entry:
+        return OAuth(**entry)
+    else:
+        oauth = OAuth.create_new(userid)
+        bumperlog.debug("Adding oauth {} for userid {}".format(oauth.access_token, userid))
+        table.insert(oauth.toDB())
+        return oauth
 
 
 def token_by_authcode(authcode):

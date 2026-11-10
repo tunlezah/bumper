@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from bumper.confserver import ConfServer
-from bumper.mqttserver import MQTTServer, MQTTHelperBot
+from bumper.mqttserver import MQTTServer, MQTTHelperBot, broker_state, client_is_connected
 from bumper.xmppserver import XMPPServer
+from bumper import tls
+from bumper import tasks
 from bumper.models import *
 from bumper.db import *
 import asyncio
@@ -85,7 +87,7 @@ logformat = logging.Formatter(
 
 bumperlog = logging.getLogger("bumper")
 if not log_to_stdout:
-    bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
+    bumper_rotate = RotatingFileHandler(os.path.join(logs_dir, "bumper.log"), maxBytes=5000000, backupCount=5)
     bumper_rotate.setFormatter(logformat)
     bumperlog.addHandler(bumper_rotate)
 else: 
@@ -96,7 +98,7 @@ else:
 confserverlog = logging.getLogger("confserver")
 if not log_to_stdout:
     conf_rotate = RotatingFileHandler(
-        "logs/confserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "confserver.log"), maxBytes=5000000, backupCount=5
     )
     conf_rotate.setFormatter(logformat)
     confserverlog.addHandler(conf_rotate)
@@ -108,7 +110,7 @@ else:
 mqttserverlog = logging.getLogger("mqttserver")
 if not log_to_stdout:
     mqtt_rotate = RotatingFileHandler(
-        "logs/mqttserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "mqttserver.log"), maxBytes=5000000, backupCount=5
     )
     mqtt_rotate.setFormatter(logformat)
     mqttserverlog.addHandler(mqtt_rotate)
@@ -125,7 +127,7 @@ else:
     translog.addHandler(logging.StreamHandler(sys.stdout))
 translog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("passlib").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-brokerlog = logging.getLogger("hbmqtt.broker")
+brokerlog = logging.getLogger("amqtt.broker")
 #brokerlog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger #There are some sublogs that could be set if needed (.plugins)
@@ -133,7 +135,7 @@ if not log_to_stdout:
     brokerlog.addHandler(mqtt_rotate)
 else:
     brokerlog.addHandler(logging.StreamHandler(sys.stdout))
-protolog = logging.getLogger("hbmqtt.mqtt.protocol")
+protolog = logging.getLogger("amqtt.mqtt.protocol")
 #protolog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger
@@ -141,7 +143,7 @@ if not log_to_stdout:
     protolog.addHandler(mqtt_rotate)
 else:
     protolog.addHandler(logging.StreamHandler(sys.stdout))
-clientlog = logging.getLogger("hbmqtt.client")
+clientlog = logging.getLogger("amqtt.client")
 #clientlog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
 if not log_to_stdout:
     clientlog.addHandler(mqtt_rotate)
@@ -150,7 +152,7 @@ else:
 helperbotlog = logging.getLogger("helperbot")
 if not log_to_stdout:
     helperbot_rotate = RotatingFileHandler(
-        "logs/helperbot.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "helperbot.log"), maxBytes=5000000, backupCount=5
     )
     helperbot_rotate.setFormatter(logformat)
     helperbotlog.addHandler(helperbot_rotate)
@@ -162,7 +164,7 @@ else:
 boterrorlog = logging.getLogger("boterror")
 if not log_to_stdout:
     boterrorlog_rotate = RotatingFileHandler(
-        "logs/boterror.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "boterror.log"), maxBytes=5000000, backupCount=5
     )
     boterrorlog_rotate.setFormatter(logformat)
     boterrorlog.addHandler(boterrorlog_rotate)
@@ -174,7 +176,7 @@ else:
 xmppserverlog = logging.getLogger("xmppserver")
 if not log_to_stdout:
     xmpp_rotate = RotatingFileHandler(
-        "logs/xmppserver.log", maxBytes=5000000, backupCount=5
+        os.path.join(logs_dir, "xmppserver.log"), maxBytes=5000000, backupCount=5
     )
     xmpp_rotate.setFormatter(logformat)
     xmppserverlog.addHandler(xmpp_rotate)
@@ -186,18 +188,32 @@ else:
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 
-mqtt_listen_port = 8883
-conf1_listen_port = 443
-conf2_listen_port = 8007
-xmpp_listen_port = 5223
+def port_from_env(name, default):
+    value = os.environ.get(name)
+    if not value:
+        return default
+    try:
+        port = int(value)
+    except ValueError:
+        port = -1
+    if not 0 < port < 65536:
+        raise ValueError("{} must be a TCP port number, not {!r}".format(name, value))
+    return port
+
+
+# Listen ports. start() reads these module globals, so they can also be set
+# programmatically before main() (the characterisation harness does that).
+# Bots are always told XMPP is on port 5223 (lookup.do / users.do FindBest),
+# whatever BUMPER_PORT_XMPP says.
+mqtt_listen_port = port_from_env("BUMPER_PORT_MQTT", 8883)
+conf1_listen_port = port_from_env("BUMPER_PORT_HTTPS", 443)
+conf2_listen_port = port_from_env("BUMPER_PORT_HTTP", 8007)
+xmpp_listen_port = port_from_env("BUMPER_PORT_XMPP", 5223)
 
 
 async def start():
 
-    try:
-        loop = asyncio.get_event_loop()
-    except:
-        loop = asyncio.new_event_loop()
+    loop = asyncio.get_running_loop()
 
     if bumper_debug:
         logging.basicConfig(
@@ -225,6 +241,7 @@ async def start():
         return
 
     bumperlog.info("Starting Bumper")
+    bumperlog.info("TLS policy: {}".format(tls.describe_policy()))
     global mqtt_server
     mqtt_server = MQTTServer((bumper_listen, mqtt_listen_port))
     global mqtt_helperbot
@@ -241,26 +258,26 @@ async def start():
     await asyncio.create_task(mqtt_server.broker_coro())
 
     # Start MQTT Helperbot
-    asyncio.create_task(mqtt_helperbot.start_helper_bot())
+    tasks.spawn(mqtt_helperbot.start_helper_bot())
 
     # Start XMPP Server
-    asyncio.create_task(xmpp_server.start_async_server())
+    tasks.spawn(xmpp_server.start_async_server())
 
     # Wait for helperbot to connect first
     while mqtt_helperbot.Client is None:
         await asyncio.sleep(0.1)
 
-    while not mqtt_helperbot.Client.session.transitions.state == "connected":
+    while not client_is_connected(mqtt_helperbot.Client):
         await asyncio.sleep(0.1)
 
     # Start web servers
     conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
-    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
+    tasks.spawn(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
+    tasks.spawn(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
 
     # Start maintenance
     while not shutting_down:
-        asyncio.create_task(maintenance())
+        tasks.spawn(maintenance())
         await asyncio.sleep(5)
 
 
@@ -275,16 +292,16 @@ async def shutdown():
 
         await conf_server.stop_server()
         await conf_server_2.stop_server()
-        if mqtt_server.broker.transitions.state == "started":
+        if broker_state(mqtt_server.broker) == "started":
             await mqtt_server.broker.shutdown()
-        elif mqtt_server.broker.transitions.state == "starting":
-            while mqtt_server.broker.transitions.state == "starting":
+        elif broker_state(mqtt_server.broker) == "starting":
+            while broker_state(mqtt_server.broker) == "starting":
                 await asyncio.sleep(0.1)
-            if mqtt_server.broker.transitions.state == "started":
+            if broker_state(mqtt_server.broker) == "started":
                 await mqtt_server.broker.shutdown()
                 await mqtt_helperbot.Client.disconnect()
         if xmpp_server.server:
-            if xmpp_server.server._serving:
+            if xmpp_server.server.is_serving():
                 xmpp_server.server.close()
             await xmpp_server.server.wait_closed()
         global shutting_down
@@ -297,6 +314,7 @@ async def shutdown():
         bumperlog.info("Exception: {}".format(e))
 
     finally:
+        db_close()
         bumperlog.info("Shutdown complete")
 
 
