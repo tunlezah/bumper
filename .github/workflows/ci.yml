@@ -18,7 +18,7 @@ env:
   # The last upstream commit before the modernisation. tests/harness/golden/
   # was recorded from it; the legacy-harness job proves it still matches.
   LEGACY_COMMIT: df36bdd29d7293e5f3b2c9a08ef14434526dba59
-  UV_VERSION: "0.11.32"
+  UV_VERSION: "0.13.7"
 
 # Third-party actions are pinned by commit SHA (version in the comment).
 
@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.12", "3.13", "3.14"]
+        python: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -100,7 +100,7 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: ${{ env.UV_VERSION }}
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Harness environment for the smoke test
         run: uv sync --frozen
 

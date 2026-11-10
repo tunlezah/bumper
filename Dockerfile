@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1
 #
-# Bumper image: Python 3.13 (Debian slim), locked dependencies (uv.lock),
+# Bumper image: Python 3.14 (Debian slim), locked dependencies (uv.lock),
 # create_certs built from source for the target architecture, runs as a
 # non-root user.
 #
@@ -11,9 +11,9 @@
 # secret "ca" adds a CA bundle for TLS-intercepting proxies while downloading
 # dependencies; it is not copied into the image.
 
-ARG PYTHON_IMAGE=python:3.13-slim
-ARG GO_IMAGE=golang:1.24-bookworm
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.32
+ARG PYTHON_IMAGE=python:3.14-slim
+ARG GO_IMAGE=golang:1.27-trixie
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13.7
 
 # --- create_certs, cross-compiled for the target architecture --------------
 FROM --platform=$BUILDPLATFORM ${GO_IMAGE} AS certs-tool

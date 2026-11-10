@@ -8,7 +8,6 @@ __pycache__
 !.github/
 !.gitignore
 !.dockerignore
-!.travis.yml
 
 # Ignore items in test (report, cache, etc), except files starting with test
 tests/* 

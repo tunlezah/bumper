@@ -8,7 +8,7 @@ so that the modernisation can be proven behaviour-preserving.
   stdlib (`http.client`, `ssl`, `socket`, `json`) and `paho-mqtt` as an MQTT
   client that is independent of the broker under test.
 * Plain synchronous pytest, no asyncio plugins. The same files run on
-  Python 3.9 + the legacy pins and on Python 3.12–3.14 + the modern pins.
+  Python 3.9 + the legacy pins and on Python 3.12–3.15 + the modern pins.
 * Responses are compared with **golden files** in `golden/` (pretty-printed,
   key-sorted JSON). Volatile values are normalised by exact field path in
   `harnesslib/normalise.py`; each rule is documented there.

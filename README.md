@@ -12,7 +12,7 @@ Bumper is a standalone and self-hosted implementation of the central server used
 
 | Default branch | Status |
 | -------------- | ------ |
-| CI (tests on Python 3.12–3.14, legacy harness, Docker) | [![CI](https://github.com/tunlezah/bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/tunlezah/bumper/actions/workflows/ci.yml) |
+| CI (tests on Python 3.12–3.15, legacy harness, Docker) | [![CI](https://github.com/tunlezah/bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/tunlezah/bumper/actions/workflows/ci.yml) |
 | Container image (amd64, arm64) | [ghcr.io/tunlezah/bumper](https://github.com/tunlezah/bumper/pkgs/container/bumper) |
 
 

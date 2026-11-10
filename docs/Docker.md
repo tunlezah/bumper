@@ -18,7 +18,7 @@ docker build -t bumper .
 docker buildx build --platform linux/amd64,linux/arm64 -t bumper .
 ```
 
-The image is based on `python:3.13-slim`, installs the locked dependencies
+The image is based on `python:3.14-slim`, installs the locked dependencies
 from `uv.lock`, and builds `create_certs` from source for the target
 architecture. It runs as the unprivileged user `bumper` (uid/gid 10001).
 
@@ -89,7 +89,7 @@ Options:
    ```dockerfile
    FROM ghcr.io/tunlezah/bumper:latest
    USER root
-   # same as: setcap cap_net_bind_service=+ep /usr/local/bin/python3.13
+   # same as: setcap cap_net_bind_service=+ep /usr/local/bin/python3.14
    RUN python -c "import os, struct; os.setxattr(os.path.realpath('/usr/local/bin/python3'), 'security.capability', struct.pack('<IIIII', 0x02000001, 1 << 10, 0, 0, 0))"
    USER bumper
    ENV BUMPER_SKIP_PORT_CHECK=1
